@@ -2,30 +2,6 @@
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <script>
-      // Polyfill `process` for browser environment and inject the API key.
-      // In a no-build-step setup, Node.js-style environment variables like `process.env`
-      // are not available by default. This script prevents a `ReferenceError` when the
-      // application code tries to access `process.env.API_KEY`.
-      if (typeof window.process === 'undefined') {
-        window.process = { env: {} };
-      }
-      // WARNING: This is for local development and demonstration purposes only.
-      // Do not commit API keys directly into your source code in a real application.
-      window.process.env.API_KEY = "AIzaSyD0pYC3WbVPs0MbYc87shubccb8Bs-S9b0";
-    </script>
-    <script>
-      // Hide the specific Babel warning in this no-build-step environment.
-      // This is a pragmatic solution to keep the console clean for this simulator
-      // where a build step is intentionally avoided. The warning is expected behavior.
-      const originalWarn = console.warn;
-      console.warn = (...args) => {
-        if (typeof args[0] === 'string' && args[0].includes('in-browser Babel transformer')) {
-          return;
-        }
-        originalWarn.apply(console, args);
-      };
-    </script>
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>YIN Trade Simulator</title>
@@ -181,60 +157,9 @@
         transition: top 0.4s ease-in-out, left 0.4s ease-in-out, transform 0.4s ease-in-out, opacity 0.3s ease-out;
       }
     </style>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      const toRGB = (hex) => {
-        let c;
-        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-            c= hex.substring(1).split('');
-            if(c.length== 3){
-                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
-            }
-            c= '0x'+c.join('');
-            return [(c>>16)&255, (c>>8)&255, c&255].join(' ');
-        }
-        throw new Error('Bad Hex');
-      }
-
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            colors: {
-              'base-100': 'rgb(var(--base-100) / <alpha-value>)',
-              'base-200': 'rgb(var(--base-200) / <alpha-value>)',
-              'base-300': 'rgb(var(--base-300) / <alpha-value>)',
-              'base-content': 'rgb(var(--base-content) / <alpha-value>)',
-              'text-strong': 'rgb(var(--text-strong) / <alpha-value>)',
-              'primary': 'rgb(var(--primary) / <alpha-value>)',
-              'secondary': 'rgb(var(--secondary) / <alpha-value>)',
-              'accent': 'rgb(var(--accent) / <alpha-value>)',
-              'success': 'rgb(var(--success) / <alpha-value>)',
-              'warning': '#FBBD23',
-              'error': 'rgb(var(--error) / <alpha-value>)',
-              'info': 'rgb(var(--info) / <alpha-value>)',
-            },
-          },
-        },
-      }
-    </script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js" data-presets="react,typescript"></script>
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-        "react/": "https://esm.sh/react@18.2.0/",
-        "@google/genai": "https://esm.sh/@google/genai@0.12.0"
-      }
-    }
-    </script>
   </head>
   <body class="bg-base-100 transition-colors duration-300">
     <div id="root"></div>
-    <script type="text/babel" data-type="module" src="./index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
