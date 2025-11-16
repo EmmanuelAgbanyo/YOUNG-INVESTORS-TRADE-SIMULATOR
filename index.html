@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // Polyfill `process` for browser environment and inject the API key.
+      // In a no-build-step setup, Node.js-style environment variables like `process.env`
+      // are not available by default. This script prevents a `ReferenceError` when the
+      // application code tries to access `process.env.API_KEY`.
+      if (typeof window.process === 'undefined') {
+        window.process = { env: {} };
+      }
+      // WARNING: This is for local development and demonstration purposes only.
+      // Do not commit API keys directly into your source code in a real application.
+      window.process.env.API_KEY = "AIzaSyD0pYC3WbVPs0MbYc87shubccb8Bs-S9b0";
+    </script>
+    <script>
+      // Hide the specific Babel warning in this no-build-step environment.
+      // This is a pragmatic solution to keep the console clean for this simulator
+      // where a build step is intentionally avoided. The warning is expected behavior.
+      const originalWarn = console.warn;
+      console.warn = (...args) => {
+        if (typeof args[0] === 'string' && args[0].includes('in-browser Babel transformer')) {
+          return;
+        }
+        originalWarn.apply(console, args);
+      };
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YIN Trade Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root { /* "Clarity" Light Theme - High Contrast & Professional */
+        --base-100: 243 244 246;      /* Soft, cool gray background (Gray-100) */
+        --base-200: 255 255 255;      /* Crisp white for cards and panels */
+        --base-300: 229 231 235;      /* Soft border color (Gray-200) */
+        --base-content: 51 65 85;     /* Dark slate for body text for high readability (Slate-600) */
+        --text-strong: 17 24 39;      /* Deep charcoal for headings (Slate-900) */
+        --primary: 79 70 229;        /* Vibrant, accessible indigo (Indigo-600) */
+        --secondary: 124 58 237;
+        --accent: 5 150 105;
+        --success: 22 163 74;
+        --error: 220 38 38;
+        --info: 59 130 246;
+      }
+      [data-theme="dark"] {
+        --base-100: 23 25 35;
+        --base-200: 30 33 46;
+        --base-300: 49 53 71;
+        --base-content: 166 173 187;
+        --text-strong: 243 244 246;
+        --primary: 59 130 246;
+        --secondary: 139 92 246;
+        --accent: 16 185 129;
+        --success: 34 197 94;
+        --error: 239 68 68;
+        --info: 96 165 250;
+      }
+      .themed-bg-gradient {
+        background-image: linear-gradient(to right, rgb(var(--primary) / 0.8), rgb(var(--secondary) / 0.8));
+      }
+
+      .themed-bg-shimmer {
+        background: linear-gradient(-45deg, rgb(var(--base-100)), rgb(var(--base-200)), rgb(var(--base-100)), rgb(var(--base-300) / 0.5));
+        background-size: 400% 400%;
+        animation: gradient-shimmer 15s ease infinite;
+      }
+
+      /* Animation Keyframes */
+      @keyframes gradient-shimmer {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      @keyframes shake {
+        10%, 90% { transform: translate3d(-1px, 0, 0); }
+        20%, 80% { transform: translate3d(2px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+        40%, 60% { transform: translate3d(4px, 0, 0); }
+      }
+      @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes fade-in-up {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes flash-success {
+        0%, 100% { background-color: transparent; }
+        50% { background-color: rgb(var(--success) / 0.2); }
+      }
+      @keyframes flash-error {
+        0%, 100% { background-color: transparent; }
+        50% { background-color: rgb(var(--error) / 0.2); }
+      }
+      @keyframes stroke-draw {
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      @keyframes pulse-highlight {
+        0%, 100% {
+          box-shadow: 0 0 0 3px rgb(var(--primary) / 0.7);
+          opacity: 0.9;
+        }
+        50% {
+          box-shadow: 0 0 15px 4px rgb(var(--primary) / 0.4), 0 0 0 5px rgb(var(--primary) / 1);
+          opacity: 1;
+        }
+      }
+
+      /* Checkmark Animation Classes */
+      .checkmark-circle {
+        stroke-dasharray: 157;
+        stroke-dashoffset: 157;
+        animation: stroke-draw 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+      }
+      .checkmark-check {
+        stroke-dasharray: 36;
+        stroke-dashoffset: 36;
+        animation: stroke-draw 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+      }
+
+
+      /* Animation Utility Classes */
+      .animate-fade-in {
+        animation: fade-in 0.5s ease-out forwards;
+      }
+      .animate-fade-in-up {
+        animation: fade-in-up 0.6s ease-out forwards;
+        opacity: 0; /* Start hidden */
+      }
+      .animate-flash-success {
+        animation: flash-success 0.8s ease-out;
+      }
+      .animate-flash-error {
+        animation: flash-error 0.8s ease-out;
+      }
+      .animate-shake {
+        animation: shake 0.7s cubic-bezier(.36,.07,.19,.97) both;
+      }
+
+
+      /* Onboarding Tour Styles */
+      .onboarding-backdrop {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(10, 10, 20, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 50;
+        animation: fade-in 0.3s ease-out;
+      }
+      .onboarding-spotlight-wrapper {
+        position: fixed;
+        inset: 0;
+        z-index: 51;
+        pointer-events: none; /* Allows clicks to pass through to backdrop */
+      }
+      .onboarding-spotlight {
+        position: absolute;
+        border-radius: 1rem;
+        box-shadow: 0 0 0 9999px rgba(10, 10, 20, 0.7);
+        transition: top 0.4s ease-in-out, left 0.4s ease-in-out, width 0.4s ease-in-out, height 0.4s ease-in-out;
+      }
+      .onboarding-highlight-pulse {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        animation: pulse-highlight 2.5s infinite ease-in-out;
+      }
+      .onboarding-tooltip {
+        position: absolute;
+        z-index: 52;
+        transition: top 0.4s ease-in-out, left 0.4s ease-in-out, transform 0.4s ease-in-out, opacity 0.3s ease-out;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      const toRGB = (hex) => {
+        let c;
+        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+            c= hex.substring(1).split('');
+            if(c.length== 3){
+                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+            }
+            c= '0x'+c.join('');
+            return [(c>>16)&255, (c>>8)&255, c&255].join(' ');
+        }
+        throw new Error('Bad Hex');
+      }
+
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              'base-100': 'rgb(var(--base-100) / <alpha-value>)',
+              'base-200': 'rgb(var(--base-200) / <alpha-value>)',
+              'base-300': 'rgb(var(--base-300) / <alpha-value>)',
+              'base-content': 'rgb(var(--base-content) / <alpha-value>)',
+              'text-strong': 'rgb(var(--text-strong) / <alpha-value>)',
+              'primary': 'rgb(var(--primary) / <alpha-value>)',
+              'secondary': 'rgb(var(--secondary) / <alpha-value>)',
+              'accent': 'rgb(var(--accent) / <alpha-value>)',
+              'success': 'rgb(var(--success) / <alpha-value>)',
+              'warning': '#FBBD23',
+              'error': 'rgb(var(--error) / <alpha-value>)',
+              'info': 'rgb(var(--info) / <alpha-value>)',
+            },
+          },
+        },
+      }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" data-presets="react,typescript"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+        "react/": "https://esm.sh/react@18.2.0/",
+        "@google/genai": "https://esm.sh/@google/genai@0.12.0"
+      }
+    }
+    </script>
+  </head>
+  <body class="bg-base-100 transition-colors duration-300">
+    <div id="root"></div>
+    <script type="text/babel" data-type="module" src="./index.tsx"></script>
+  </body>
+</html>
