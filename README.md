@@ -1,20 +1,52 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Yin Trade Simulator
 
-# Run and deploy your AI Studio app
+[Project Description]
 
-This contains everything you need to run your app locally.
+## Getting Started
 
-View your app in AI Studio: https://ai.studio/apps/drive/1JeiOsd_zDVETFutIlRnBhW_Nx9TanCHg
+### Prerequisites
 
-## Run Locally
+- Node.js
 
-**Prerequisites:**  Node.js
+### Installation and Running
 
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/your-repository.git
+   ```
+2. **Navigate to the project directory:**
+   ```bash
+   cd your-repository
+   ```
+3. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+4. **Set up your environment variables:**
+   - Create a `.env.local` file in the root of the project.
+   - Add your Gemini API key to the `.env.local` file:
+     ```
+     GEMINI_API_KEY=your_api_key
+     ```
+5. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Usage
+
+[Instructions on how to use the application]
+
+## Building for Production
+
+To create a production build of the application, run the following command:
+
+```bash
+npm run build
+```
+
+This will create a `dist` directory with the production-ready files. You can preview the production build with:
+
+```bash
+npm run preview
+```
