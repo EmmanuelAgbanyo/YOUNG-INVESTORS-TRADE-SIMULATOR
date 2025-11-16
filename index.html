@@ -220,21 +220,13 @@
         },
       }
     </script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js" data-presets="react,typescript"></script>
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-        "react/": "https://esm.sh/react@18.2.0/",
-        "@google/genai": "https://esm.sh/@google/genai@0.12.0"
-      }
-    }
-    </script>
   </head>
   <body class="bg-base-100 transition-colors duration-300">
     <div id="root"></div>
-    <script type="text/babel" data-type="module" src="./index.tsx"></script>
+    <!-- Use Vite to bundle the application entry. During development Vite serves
+         this file as a native ES module; during a production build the script
+         tag will be replaced with a hashed bundle reference by the build tool.
+         Keeping the script as a plain module lets Vite handle .tsx/.ts imports. -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

@@ -3,8 +3,22 @@ import { useState, useCallback } from 'react';
 import { GoogleGenAI, Chat } from '@google/genai';
 import type { Message, Stock } from '../types.ts';
 
-// Initialize the Gemini AI model once
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+let _ai_local2: any = null;
+const getAI_local2 = () => {
+  if (_ai_local2) return _ai_local2;
+  try {
+    const key = typeof window !== 'undefined' && (window as any).process?.env?.API_KEY
+      ? (window as any).process.env.API_KEY
+      : (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
+    if (!key) throw new Error('No API key provided for GoogleGenAI');
+    _ai_local2 = new GoogleGenAI({ apiKey: key });
+    return _ai_local2;
+  } catch (err) {
+    console.warn('GoogleGenAI not available in this environment, using mock:', err);
+    _ai_local2 = { chats: { create: () => ({ sendMessage: async ({ message }: any) => ({ text: 'Mock: ' + String(message) }) }) } };
+    return _ai_local2;
+  }
+};
 
 interface ChatSession {
   chat: Chat | null;
@@ -33,7 +47,8 @@ export const useAIAnalyst = () => {
     updateSession(stock.symbol, { isLoading: true, error: null, messages: [] });
     
     try {
-      const newChat = ai.chats.create({
+      const client = getAI_local2();
+      const newChat = client.chats.create({
         model: 'gemini-2.5-flash',
         config: {
           systemInstruction: 'You are a savvy financial analyst for a stock trading simulator game. Your analysis is for educational purposes within the game. Keep your answers concise, clear, and easy for a beginner to understand. Avoid any real-world financial advice disclaimers.',

@@ -4,8 +4,28 @@ import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Chat } from '@google/genai';
 import type { Message, Stock, Portfolio } from '../types.ts';
 
-// Initialize the Gemini AI model once
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+// Use the shared safe factory from other hooks pattern. Create a local
+// factory so this module remains self-contained.
+let _ai_local: any = null;
+const getAI_local = () => {
+    if (_ai_local) return _ai_local;
+    try {
+        const key = typeof window !== 'undefined' && (window as any).process?.env?.API_KEY
+            ? (window as any).process.env.API_KEY
+            : (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
+        if (!key) throw new Error('No API key provided for GoogleGenAI');
+        _ai_local = new GoogleGenAI({ apiKey: key });
+        return _ai_local;
+    } catch (err) {
+        console.warn('GoogleGenAI not available in this environment, using mock:', err);
+        _ai_local = {
+            chats: {
+                create: () => ({ sendMessage: async ({ message }: any) => ({ text: 'Mock: ' + String(message) }) }),
+            },
+        };
+        return _ai_local;
+    }
+};
 
 const SYSTEM_INSTRUCTION = `You are "YIN AI Assistant", a helpful and knowledgeable guide for a stock trading simulator game. Your tone is professional, encouraging, and clear.
 When a user asks for a market summary, to analyze a specific stock, or to review their portfolio, you MUST respond ONLY with a JSON object to trigger the correct tool. Do not add any other text.
@@ -61,10 +81,11 @@ export const useChatbot = () => {
 
     useEffect(() => {
         const initializeChat = () => {
-            const newChat = ai.chats.create({
-                model: 'gemini-2.5-flash',
-                config: { systemInstruction: SYSTEM_INSTRUCTION },
-            });
+                const client = getAI_local();
+                const newChat = client.chats.create({
+                    model: 'gemini-2.5-flash',
+                    config: { systemInstruction: SYSTEM_INSTRUCTION },
+                });
             setChat(newChat);
             setMessages([{
                 role: 'model',
@@ -86,7 +107,7 @@ export const useChatbot = () => {
         setToolBeingUsed(null);
 
         try {
-            const detectionResponse = await chat.sendMessage({ message: userMessageText });
+                const detectionResponse = await chat.sendMessage({ message: userMessageText });
             let toolResultData = '';
             let isToolCall = false;
             let finalPrompt = '';

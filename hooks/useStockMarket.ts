@@ -11,7 +11,40 @@ import {
     DEFAULT_INTEREST_RATE, DEFAULT_COMMISSION_FEE
 } from '../constants.ts';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+// Delay creation of the GoogleGenAI client until it's needed. The official
+// `@google/genai` package may depend on Node APIs and can throw during module
+// evaluation when bundled for the browser. Creating the client at module-load
+// can crash the whole app and produce a blank page. Use a factory that
+// attempts to create the real client and falls back to a lightweight mock.
+let _ai: any = null;
+const getAI = () => {
+    if (_ai) return _ai;
+    try {
+        // Prefer runtime-injected key (index.html sets window.process.env.API_KEY)
+        const key = typeof window !== 'undefined' && (window as any).process?.env?.API_KEY
+            ? (window as any).process.env.API_KEY
+            : (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
+
+        if (!key) throw new Error('No API key provided for GoogleGenAI');
+        _ai = new GoogleGenAI({ apiKey: key });
+        return _ai;
+    } catch (err) {
+        // Fallback: provide a minimal mock object used by the hooks so the app
+        // can run without the real AI client in the browser.
+        console.warn('GoogleGenAI not available in this environment, using mock:', err);
+        _ai = {
+            models: {
+                generateContent: async () => ({ text: JSON.stringify({ headlines: [] }) }),
+            },
+            chats: {
+                create: () => ({
+                    sendMessage: async ({ message }: any) => ({ text: 'Mock AI response for message: ' + String(message) }),
+                }),
+            },
+        };
+        return _ai;
+    }
+};
 
 const getProfileStateKey = (profileId: string) => `yin_trade_profile_${profileId}`;
 
@@ -144,7 +177,8 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     const prompt = `Generate 5 fictional, concise news headlines for a stock market game based on these Ghanaian companies: ${stockList}. The headlines should be plausible but not real. Categorize the impact of each headline as 'positive', 'negative', or 'neutral'.`;
     
     try {
-        const response = await ai.models.generateContent({
+        const client = getAI();
+        const response = await client.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
@@ -381,7 +415,8 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
       setProfileState(prevState => {
           if (!prevState) return null;
           let newCash = prevState.portfolio.cash;
-          let newHoldings = { ...prevState.portfolio.holdings };
+          type Holding = { symbol: string; quantity: number; avgCost: number };
+          let newHoldings: Record<string, Holding> = { ...prevState.portfolio.holdings } as Record<string, Holding>;
           let newOrderHistory = [...prevState.orderHistory];
           const executedOrderIds = new Set<string>();
           const now = Date.now();
@@ -431,15 +466,15 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
               if (order.status === OrderStatus.PENDING && now >= order.submittedAt + PENDING_DURATION) { order.status = OrderStatus.WORKING; }
               if (order.status === OrderStatus.WORKING) {
                   switch (order.orderType) {
-                      case OrderType.MARKET: processExecution(order, stock.price); return null;
+                      case OrderType.MARKET: processExecution(order as ActiveOrder, stock.price); return null;
                       case OrderType.LIMIT:
-                          if ((order.tradeType === TradeType.BUY && stock.price <= order.limitPrice!) || (order.tradeType === TradeType.SELL && stock.price >= order.limitPrice!)) { processExecution(order, stock.price); return null; }
+                          if ((order.tradeType === TradeType.BUY && stock.price <= order.limitPrice!) || (order.tradeType === TradeType.SELL && stock.price >= order.limitPrice!)) { processExecution(order as ActiveOrder, stock.price); return null; }
                           break;
                       case OrderType.TRAILING_STOP:
-                          const newHighWaterMark = Math.max(order.highWaterMark!, stock.price);
-                          const newTriggerPrice = newHighWaterMark * (1 - order.trailPercent!);
-                          if (stock.price <= newTriggerPrice) { processExecution(order, stock.price); return null; }
-                          return { ...order, highWaterMark: newHighWaterMark, triggerPrice: newTriggerPrice };
+                          const newHighWaterMark = Math.max((order as ActiveOrder).highWaterMark!, stock.price);
+                          const newTriggerPrice = newHighWaterMark * (1 - (order as ActiveOrder).trailPercent!);
+                          if (stock.price <= newTriggerPrice) { processExecution(order as ActiveOrder, stock.price); return null; }
+                          return { ...(order as ActiveOrder), highWaterMark: newHighWaterMark, triggerPrice: newTriggerPrice };
                   }
               }
               return order;
