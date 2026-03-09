@@ -39,31 +39,37 @@ export const useAIAnalyst = () => {
       }
     }));
   }, []);
-  
+
   const startAnalysis = useCallback(async (stock: Stock) => {
     if (!stock) return;
 
     // Reset previous error and messages for a fresh analysis
     updateSession(stock.symbol, { isLoading: true, error: null, messages: [] });
-    
+
     try {
       const client = getAI_local2();
       const newChat = client.chats.create({
         model: 'gemini-2.5-flash',
         config: {
-          systemInstruction: 'You are a savvy financial analyst for a stock trading simulator game. Your analysis is for educational purposes within the game. Keep your answers concise, clear, and easy for a beginner to understand. Avoid any real-world financial advice disclaimers.',
+          systemInstruction: 'You are an Elite Institutional Stock Analyst for the Ghana Stock Exchange (GSE). Your analysis must be highly professional, formatting insights like a Bloomberg Terminal breakdown. Use bullet points for readability. Be decisive, objective, and data-driven. Always conclude strongly with a clear Action command: BUY, SELL, or HOLD.',
         },
       });
 
-      const prompt = `Provide a concise, easy-to-understand investment analysis for the following stock on the Ghana Stock Exchange:
+      const prompt = `Conduct a rapid institutional-grade analysis for the following GSE stock:
 
 Stock: ${stock.name} (${stock.symbol})
 Current Price: GHS ${stock.price.toFixed(2)}
+Volatility Rating: ${(stock.volatility * 100).toFixed(1)}%
+Growth Trend: ${(stock.trend * 100).toFixed(2)}%
 
-Conclude with a clear recommendation: **BUY**, **SELL**, or **HOLD**, and provide a 2-3 sentence rationale. Also include a brief risk assessment.
+Provide:
+1. **Market Positioning:** Brief competitive edge/weakness.
+2. **Technical Outlook:** What the volatility and trend figures suggest.
+3. **Risk Profile:** Key vulnerabilities.
+4. **Final Recommendation:** **BUY**, **SELL**, or **HOLD** with a single sentence justification.
 
-Format your response using markdown with headings for Recommendation, Rationale, and Risk Assessment.`;
-      
+Use markdown. Keep it punchy and premium.`;
+
       const response = await newChat.sendMessage({ message: prompt });
       const modelMessage: Message = { role: 'model', text: response.text };
 
@@ -87,27 +93,27 @@ Format your response using markdown with headings for Recommendation, Rationale,
     if (!message.trim() || !session || !session.chat || session.isLoading) return;
 
     const userMessage: Message = { role: 'user', text: message };
-    
+
     updateSession(symbol, {
-        messages: [...session.messages, userMessage],
-        isLoading: true,
-        error: null
+      messages: [...session.messages, userMessage],
+      isLoading: true,
+      error: null
     });
 
     try {
       const response = await session.chat.sendMessage({ message: message });
       const modelMessage: Message = { role: 'model', text: response.text };
-      
+
       setSessions(prev => {
-          const currentSession = prev[symbol];
-          return {
-              ...prev,
-              [symbol]: {
-                  ...currentSession,
-                  messages: [...currentSession.messages, modelMessage],
-                  isLoading: false
-              }
+        const currentSession = prev[symbol];
+        return {
+          ...prev,
+          [symbol]: {
+            ...currentSession,
+            messages: [...currentSession.messages, modelMessage],
+            isLoading: false
           }
+        }
       });
 
     } catch (e) {

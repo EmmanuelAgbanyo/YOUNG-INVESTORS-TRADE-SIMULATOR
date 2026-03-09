@@ -19,7 +19,7 @@ interface HeaderProps {
 
 const LogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
     </svg>
 );
 
@@ -36,14 +36,14 @@ const LogoutIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 const ShieldCheckIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" />
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" />
+    </svg>
 );
 
 const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.962A3.75 3.75 0 0115 12a3.75 3.75 0 01-2.25 3.512m-3.75 1.488A2.25 2.25 0 016.75 18v-2.25m0 0a3.75 3.75 0 01-3.75-3.75m3.75 3.75A3.75 3.75 0 016 16.5m-3 3.75a3.75 3.75 0 01-3.75-3.75m0 0A3.75 3.75 0 013 12.75m3.75 1.488A3.75 3.75 0 019 15.25m-3.75 1.488a3.75 3.75 0 01-3.75-3.75m3.75 3.75c-1.33 0-2.51-.54-3.375-1.417-1.146-1.146-1.146-3.033 0-4.179 1.146-1.146 3.033-1.146 4.179 0 1.146 1.146 1.146 3.033 0 4.179Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.962A3.75 3.75 0 0115 12a3.75 3.75 0 01-2.25 3.512m-3.75 1.488A2.25 2.25 0 016.75 18v-2.25m0 0a3.75 3.75 0 01-3.75-3.75m3.75 3.75A3.75 3.75 0 016 16.5m-3 3.75a3.75 3.75 0 01-3.75-3.75m0 0A3.75 3.75 0 013 12.75m3.75 1.488A3.75 3.75 0 019 15.25m-3.75 1.488a3.75 3.75 0 01-3.75-3.75m3.75 3.75c-1.33 0-2.51-.54-3.375-1.417-1.146-1.146-1.146-3.033 0-4.179 1.146-1.146 3.033-1.146 4.179 0 1.146 1.146 1.146 3.033 0 4.179Z" />
     </svg>
 );
 
@@ -91,7 +91,7 @@ const UserMenu: React.FC<{
     const creationDate = new Date(profile.createdAt).toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric'
     });
-    
+
     useEffect(() => {
         if (profile.teamId) {
             try {
@@ -120,44 +120,47 @@ const UserMenu: React.FC<{
 
     return (
         <div className="relative" ref={menuRef}>
-            <div className="flex items-center space-x-4 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-                <div className="text-right hidden sm:block">
-                    <div className="text-xs text-base-content">{profile.name}</div>
-                    <div className="font-bold text-text-strong">{formatter.format(cash)}</div>
+            <div className="flex items-center space-x-4 cursor-pointer p-1.5 rounded-full hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors" onClick={() => setIsOpen(!isOpen)}>
+                <div className="text-right hidden sm:block pr-1">
+                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{profile.name}</div>
+                    <div className="font-bold text-slate-800 dark:text-white">{formatter.format(cash)}</div>
                 </div>
-                <div className="w-10 h-10 rounded-full themed-bg-gradient flex items-center justify-center text-white font-bold text-lg ring-2 ring-offset-2 ring-offset-base-200 ring-primary/50">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-2 ring-white dark:ring-slate-800">
                     {initial}
                 </div>
             </div>
             {isOpen && (
-                 <div className="absolute right-0 mt-2 w-56 bg-base-200 rounded-lg shadow-xl border border-base-300/70 animate-fade-in z-30 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-base-300">
-                        <p className="text-sm font-semibold text-text-strong truncate">{profile.name}</p>
-                        <p className="text-xs text-base-content/70">Trader since: {creationDate}</p>
-                        {teamName && <p className="text-xs text-info font-semibold mt-1">Team: {teamName}</p>}
+                <div className="absolute right-0 mt-4 w-64 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-white/50 dark:border-slate-700/50 animate-fade-in-up z-50 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50">
+                        <p className="text-base font-bold text-slate-800 dark:text-white truncate">{profile.name}</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">Trader since: {creationDate}</p>
+                        {teamName && <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-1.5 bg-indigo-50 dark:bg-indigo-900/30 inline-block px-2 py-0.5 rounded-md">Team: {teamName}</p>}
                     </div>
-                    {!profile.password && profile.name !== 'Admin' && (
-                        <button onClick={() => { onSecureProfile(); setIsOpen(false); }} className="flex items-center space-x-3 w-full text-left px-4 py-3 text-sm text-success hover:bg-success hover:text-white transition-colors duration-200">
-                            <ShieldCheckIcon className="w-5 h-5" />
-                            <span>Secure Profile</span>
+
+                    <div className="p-2 space-y-1">
+                        {!profile.password && profile.name !== 'Admin' && (
+                            <button onClick={() => { onSecureProfile(); setIsOpen(false); }} className="flex items-center space-x-3 w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors duration-200">
+                                <ShieldCheckIcon className="w-5 h-5" />
+                                <span>Secure Profile</span>
+                            </button>
+                        )}
+                        {!profile.teamId && profile.name !== 'Admin' && (
+                            <button onClick={() => { onCreateTeam(); setIsOpen(false); }} className="flex items-center space-x-3 w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors duration-200">
+                                <UsersIcon className="w-5 h-5" />
+                                <span>Create Team</span>
+                            </button>
+                        )}
+                        {profile.isTeamLeader && (
+                            <button onClick={() => { onViewInviteCode(); setIsOpen(false); }} className="flex items-center space-x-3 w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors duration-200">
+                                <TicketIcon className="w-5 h-5" />
+                                <span>View Invite Code</span>
+                            </button>
+                        )}
+                        <button onClick={onLogout} className="flex items-center space-x-3 w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200 mt-1">
+                            <LogoutIcon className="w-5 h-5" />
+                            <span>Logout</span>
                         </button>
-                    )}
-                    {!profile.teamId && profile.name !== 'Admin' && (
-                         <button onClick={() => { onCreateTeam(); setIsOpen(false); }} className="flex items-center space-x-3 w-full text-left px-4 py-3 text-sm text-info hover:bg-info hover:text-white transition-colors duration-200">
-                            <UsersIcon className="w-5 h-5" />
-                            <span>Create Team</span>
-                        </button>
-                    )}
-                    {profile.isTeamLeader && (
-                         <button onClick={() => { onViewInviteCode(); setIsOpen(false); }} className="flex items-center space-x-3 w-full text-left px-4 py-3 text-sm text-secondary hover:bg-secondary hover:text-white transition-colors duration-200">
-                            <TicketIcon className="w-5 h-5" />
-                            <span>View Invite Code</span>
-                        </button>
-                    )}
-                    <button onClick={onLogout} className="flex items-center space-x-3 w-full text-left px-4 py-3 text-sm text-error hover:bg-error hover:text-white transition-colors duration-200">
-                        <LogoutIcon className="w-5 h-5" />
-                        <span>Logout</span>
-                    </button>
+                    </div>
                 </div>
             )}
         </div>
@@ -166,34 +169,38 @@ const UserMenu: React.FC<{
 
 
 const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, cash, marketSentiment, marketStatus, onOpenGuide, profile, onLogout, onSecureProfile, onCreateTeam, onViewInviteCode }) => {
-  return (
-    <header className="bg-base-200/80 backdrop-blur-md sticky top-0 z-20 border-b border-base-300/70 shadow-sm">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-        <div className="flex items-center">
-            <div className="bg-primary/20 p-2 rounded-lg mr-3">
-                <LogoIcon className="w-6 h-6 text-primary" />
-            </div>
-            <h1 className="text-xl md:text-2xl font-bold text-text-strong tracking-wide hidden sm:block">
-                YIN Trade Simulator
-            </h1>
+    return (
+        <div className="sticky top-4 z-50 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <header className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border border-white/40 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)]">
+                <div className="flex items-center justify-between h-16 px-4 sm:px-6">
+                    <div className="flex items-center">
+                        <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-2 rounded-xl mr-3 shadow-lg shadow-blue-500/30 text-white">
+                            <LogoIcon className="w-6 h-6" />
+                        </div>
+                        <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white tracking-tight hidden sm:block drop-shadow-sm">
+                            YIN Trade Simulator
+                        </h1>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        <MarketClock status={marketStatus} />
+                        <button
+                            onClick={onOpenGuide}
+                            id="help-guide-button"
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
+                            aria-label="Open Simulator Guide"
+                        >
+                            <QuestionMarkCircleIcon className="w-5 h-5" />
+                        </button>
+                        <div className="p-1 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 shadow-sm flex items-center justify-center">
+                            <ThemeSwitcher theme={theme} toggleTheme={toggleTheme} />
+                        </div>
+                        <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+                        <UserMenu cash={cash} profile={profile} onLogout={onLogout} onSecureProfile={onSecureProfile} onCreateTeam={onCreateTeam} onViewInviteCode={onViewInviteCode} />
+                    </div>
+                </div>
+            </header>
         </div>
-        <div className="flex items-center space-x-4">
-            <MarketClock status={marketStatus} />
-            <button
-                onClick={onOpenGuide}
-                id="help-guide-button"
-                className="w-10 h-10 flex items-center justify-center rounded-lg bg-base-300/70 hover:bg-base-300 text-base-content hover:text-text-strong transition-all"
-                aria-label="Open Simulator Guide"
-            >
-                <QuestionMarkCircleIcon className="w-6 h-6" />
-            </button>
-            <ThemeSwitcher theme={theme} toggleTheme={toggleTheme} />
-            <div className="h-8 w-px bg-base-300/70 hidden md:block"></div>
-            <UserMenu cash={cash} profile={profile} onLogout={onLogout} onSecureProfile={onSecureProfile} onCreateTeam={onCreateTeam} onViewInviteCode={onViewInviteCode} />
-        </div>
-      </div>
-    </header>
-  );
+    );
 };
 
 export default Header;

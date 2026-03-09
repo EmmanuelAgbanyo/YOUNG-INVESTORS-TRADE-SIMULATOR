@@ -35,8 +35,8 @@ const App: React.FC = () => {
     try {
       const activeProfileId = localStorage.getItem('yin_trade_active_profile_id');
       if (activeProfileId) {
-          const profiles: UserProfile[] = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
-          return profiles.find(p => p.id === activeProfileId) || null;
+        const profiles: UserProfile[] = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
+        return profiles.find(p => p.id === activeProfileId) || null;
       }
     } catch (e) {
       console.error("Error loading profile from localStorage, clearing data.", e);
@@ -46,53 +46,53 @@ const App: React.FC = () => {
     }
     return null;
   });
-  
+
   const stockMarket = useStockMarket(activeProfile);
 
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
-        if (event.key === 'yin_trade_broadcast' && event.newValue) {
-            const { message, timestamp } = JSON.parse(event.newValue);
-            // Ignore old messages
-            if (Date.now() - timestamp < 5000) {
-                 setToast({ type: 'info', text: `Admin Broadcast: ${message}` });
-            }
+      if (event.key === 'yin_trade_broadcast' && event.newValue) {
+        const { message, timestamp } = JSON.parse(event.newValue);
+        // Ignore old messages
+        if (Date.now() - timestamp < 5000) {
+          setToast({ type: 'info', text: `Admin Broadcast: ${message}` });
         }
+      }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => {
-        window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
   useEffect(() => {
     if (stockMarket.toast) {
-        setToast(stockMarket.toast);
-        stockMarket.setToast(null); // Reset toast in hook after passing it up
+      setToast(stockMarket.toast);
+      stockMarket.setToast(null); // Reset toast in hook after passing it up
     }
   }, [stockMarket.toast, stockMarket.setToast]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-        setIsInitialized(true);
-        if (activeProfile) {
-            const hasOnboarded = localStorage.getItem('yin_trade_onboarded');
-            if (!hasOnboarded) {
-                setShowOnboarding(true);
-            }
+      setIsInitialized(true);
+      if (activeProfile) {
+        const hasOnboarded = localStorage.getItem('yin_trade_onboarded');
+        if (!hasOnboarded) {
+          setShowOnboarding(true);
         }
+      }
     }, 1500); // Increased delay for splash screen visibility
     return () => clearTimeout(timer);
   }, [activeProfile]);
-  
+
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
     localStorage.setItem('yin_trade_onboarded', 'true');
   };
-  
+
   const openGuideFromOnboarding = () => {
-      handleOnboardingComplete();
-      setShowGuide(true);
+    handleOnboardingComplete();
+    setShowGuide(true);
   }
 
   useEffect(() => {
@@ -131,8 +131,8 @@ const App: React.FC = () => {
     const profiles: UserProfile[] = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
     const profileIndex = profiles.findIndex(p => p.id === activeProfile.id);
     if (profileIndex !== -1) {
-        profiles[profileIndex] = updatedProfile;
-        localStorage.setItem('yin_trade_profiles', JSON.stringify(profiles));
+      profiles[profileIndex] = updatedProfile;
+      localStorage.setItem('yin_trade_profiles', JSON.stringify(profiles));
     }
 
     // Update active profile state
@@ -145,7 +145,7 @@ const App: React.FC = () => {
 
     const teams: Team[] = JSON.parse(localStorage.getItem('yin_trade_teams') || '[]');
     const invites: TeamInvite[] = JSON.parse(localStorage.getItem('yin_trade_invites') || '[]');
-    
+
     const newTeamId = `team_${Date.now()}`;
     const newProfileId = activeProfile.id;
 
@@ -161,9 +161,9 @@ const App: React.FC = () => {
 
     // Create a unique invite code
     const newInvite: TeamInvite = {
-        code: `${teamName.substring(0, 4).toUpperCase()}${Math.random().toString(36).substring(2, 6)}`,
-        teamId: newTeam.id,
-        createdAt: Date.now(),
+      code: `${teamName.substring(0, 4).toUpperCase()}${Math.random().toString(36).substring(2, 6)}`,
+      teamId: newTeam.id,
+      createdAt: Date.now(),
     };
     invites.push(newInvite);
     localStorage.setItem('yin_trade_invites', JSON.stringify(invites));
@@ -173,8 +173,8 @@ const App: React.FC = () => {
     const profiles: UserProfile[] = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
     const profileIndex = profiles.findIndex(p => p.id === activeProfile.id);
     if (profileIndex !== -1) {
-        profiles[profileIndex] = updatedProfile;
-        localStorage.setItem('yin_trade_profiles', JSON.stringify(profiles));
+      profiles[profileIndex] = updatedProfile;
+      localStorage.setItem('yin_trade_profiles', JSON.stringify(profiles));
     }
 
     setActiveProfile(updatedProfile);
@@ -190,10 +190,10 @@ const App: React.FC = () => {
     const invite = invites.find(i => i.teamId === activeProfile.teamId);
 
     if (team && invite) {
-        setInviteInfo({ teamName: team.name, code: invite.code });
-        setIsInviteModalOpen(true);
+      setInviteInfo({ teamName: team.name, code: invite.code });
+      setIsInviteModalOpen(true);
     } else {
-        setToast({ type: 'error', text: 'Could not find invite code for your team.' });
+      setToast({ type: 'error', text: 'Could not find invite code for your team.' });
     }
   };
 
@@ -201,74 +201,87 @@ const App: React.FC = () => {
   if (!isInitialized) {
     return <SplashScreen />;
   }
-  
+
   if (!activeProfile || !stockMarket.isLoaded) {
     return <ProfileManager onProfileSelected={handleSetProfile} theme={theme} toggleTheme={toggleTheme} />;
   }
-  
+
   if (!stockMarket.profileState) return null; // Wait for profile state to load
 
   const isAdmin = activeProfile.name === 'Admin';
-  
+
   return (
-    <div className="min-h-screen bg-base-100 text-base-content font-sans flex flex-col animate-fade-in">
-      <Header 
-        theme={theme} 
-        toggleTheme={toggleTheme} 
-        profile={activeProfile}
-        cash={stockMarket.profileState.portfolio.cash}
-        marketSentiment={stockMarket.marketSentiment}
-        marketStatus={stockMarket.marketStatus}
-        onOpenGuide={() => setShowGuide(true)}
-        onLogout={handleLogout}
-        onSecureProfile={() => setIsSetPasswordModalOpen(true)}
-        onCreateTeam={() => setIsCreateTeamModalOpen(true)}
-        onViewInviteCode={handleViewInviteCode}
-      />
-      <StockTicker stocks={stockMarket.stocks} />
-      <main className="flex-grow w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
-        <MarketView 
-          {...stockMarket} 
-          profile={activeProfile} 
-          portfolio={stockMarket.profileState.portfolio} 
-          activeOrders={stockMarket.profileState.activeOrders} 
-          orderHistory={stockMarket.profileState.orderHistory} 
-          performanceHistory={stockMarket.profileState.performanceHistory}
-          isAdmin={isAdmin} 
-          setToast={setToast}
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-base-content font-sans flex flex-col animate-fade-in relative overflow-hidden">
+      {/* Global Dynamic Background Elements for Glassmorphic Depth */}
+      <div className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-[pulse_10s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[20%] right-[-10%] w-[500px] h-[500px] bg-rose-500/10 dark:bg-rose-600/10 rounded-full blur-[140px] mix-blend-multiply dark:mix-blend-screen animate-[pulse_12s_ease-in-out_infinite_alternate]" />
+        <div className="absolute top-[40%] left-[60%] w-[400px] h-[400px] bg-emerald-400/5 dark:bg-emerald-500/5 rounded-full blur-[100px] mix-blend-multiply dark:mix-blend-screen animate-[spin_20s_linear_infinite] origin-[150%_150%]" />
+      </div>
+
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Header
+          theme={theme}
+          toggleTheme={toggleTheme}
+          profile={activeProfile}
+          cash={stockMarket.profileState.portfolio.cash}
+          marketSentiment={stockMarket.marketSentiment}
+          marketStatus={stockMarket.marketStatus}
+          onOpenGuide={() => setShowGuide(true)}
+          onLogout={handleLogout}
+          onSecureProfile={() => setIsSetPasswordModalOpen(true)}
+          onCreateTeam={() => setIsCreateTeamModalOpen(true)}
+          onViewInviteCode={handleViewInviteCode}
         />
-      </main>
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-      <OnboardingModal 
-        isVisible={showOnboarding}
-        onComplete={handleOnboardingComplete}
-        onOpenGuide={openGuideFromOnboarding}
-      />
-      <GuideModal
-        isVisible={showGuide}
-        onClose={() => setShowGuide(false)}
-      />
-      <SetPasswordModal
-        isOpen={isSetPasswordModalOpen}
-        onClose={() => setIsSetPasswordModalOpen(false)}
-        onSetPassword={handleSecureProfile}
-      />
-       <CreateTeamModal
-        isOpen={isCreateTeamModalOpen}
-        onClose={() => setIsCreateTeamModalOpen(false)}
-        onCreateTeam={handleCreateTeam}
-      />
-      <TeamInviteModal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        teamName={inviteInfo?.teamName || ''}
-        inviteCode={inviteInfo?.code || ''}
-      />
-      <Footer />
-      <ChatbotWidget
-        stocks={stockMarket.stocks}
-        portfolio={stockMarket.profileState.portfolio}
-       />
+        <StockTicker stocks={stockMarket.stocks} />
+        <main className="flex-grow w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
+          <MarketView
+            {...stockMarket}
+            profile={activeProfile}
+            portfolio={stockMarket.profileState.portfolio}
+            activeOrders={stockMarket.profileState.activeOrders}
+            orderHistory={stockMarket.profileState.orderHistory}
+            performanceHistory={stockMarket.profileState.performanceHistory}
+            isAdmin={isAdmin}
+            setToast={setToast}
+            adminSettings={stockMarket.adminSettings}
+            openMarketAdmin={() => { }} // Implemented elsewhere or passed down
+            closeMarketAdmin={() => { }} // Implemented elsewhere or passed down
+          />
+        </main>
+        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+        <OnboardingModal
+          isVisible={showOnboarding}
+          onComplete={handleOnboardingComplete}
+          onOpenGuide={openGuideFromOnboarding}
+        />
+        <GuideModal
+          isVisible={showGuide}
+          onClose={() => setShowGuide(false)}
+        />
+        <SetPasswordModal
+          isOpen={isSetPasswordModalOpen}
+          onClose={() => setIsSetPasswordModalOpen(false)}
+          onSetPassword={handleSecureProfile}
+        />
+        <CreateTeamModal
+          isOpen={isCreateTeamModalOpen}
+          onClose={() => setIsCreateTeamModalOpen(false)}
+          onCreateTeam={handleCreateTeam}
+        />
+        <TeamInviteModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          teamName={inviteInfo?.teamName || ''}
+          inviteCode={inviteInfo?.code || ''}
+        />
+        <Footer />
+        <ChatbotWidget
+          stocks={stockMarket.stocks}
+          portfolio={stockMarket.profileState.portfolio}
+        />
+      </div>
     </div>
   );
 };

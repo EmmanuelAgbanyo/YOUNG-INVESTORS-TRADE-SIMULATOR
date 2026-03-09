@@ -8,7 +8,7 @@ import YouTubeEmbed from './YouTubeEmbed';
 import Button from './ui/Button';
 
 interface AcademyViewProps {
-  profile: UserProfile;
+    profile: UserProfile;
 }
 
 // Icons
@@ -21,14 +21,14 @@ const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" /></svg>
 );
 const LockClosedIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
-    <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+    </svg>
 );
 const ChevronLeftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+    </svg>
 );
 
 const AcademyView: React.FC<AcademyViewProps> = ({ profile }) => {
@@ -43,7 +43,7 @@ const AcademyView: React.FC<AcademyViewProps> = ({ profile }) => {
         try {
             const savedProgress = localStorage.getItem(progressKey);
             if (savedProgress) setProgress(JSON.parse(savedProgress));
-            
+
             const savedVideos = localStorage.getItem('yin_trade_academy_videos');
             if (savedVideos) setCustomVideos(JSON.parse(savedVideos));
         } catch (e) { console.error("Failed to load academy data", e); }
@@ -60,7 +60,7 @@ const AcademyView: React.FC<AcademyViewProps> = ({ profile }) => {
     const completedLessonsCount = allLessons.filter(l => isLessonCompleted(l.id)).length;
     const totalLessonsCount = allLessons.length;
     const overallCompletion = totalLessonsCount > 0 ? (completedLessonsCount / totalLessonsCount) * 100 : 0;
-    
+
     const isModuleUnlocked = (moduleIndex: number): boolean => {
         if (moduleIndex === 0) return true;
         const prevModule = ACADEMY_MODULES[moduleIndex - 1];
@@ -70,9 +70,9 @@ const AcademyView: React.FC<AcademyViewProps> = ({ profile }) => {
 
     const renderModuleSelection = () => (
         <div className="animate-fade-in">
-             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
-                    <BookOpenIcon className="w-8 h-8 text-primary"/>
+                    <BookOpenIcon className="w-8 h-8 text-primary" />
                     <div>
                         <h2 className="text-3xl font-bold text-text-strong">Trader Academy</h2>
                         <p className="text-base-content/80">Build your trading knowledge from the ground up.</p>
@@ -93,16 +93,23 @@ const AcademyView: React.FC<AcademyViewProps> = ({ profile }) => {
                     const isUnlocked = isModuleUnlocked(index);
 
                     return (
-                        <div key={module.id} className={`bg-base-200 p-6 rounded-2xl border border-base-300/70 transition-all duration-300 ${isUnlocked ? 'hover:shadow-xl dark:hover:shadow-primary/10 hover:-translate-y-1' : 'opacity-60'}`}>
-                            <h3 className="text-xl font-bold text-text-strong">{module.title}</h3>
-                            <p className="text-sm text-base-content/70 h-10 mt-1 mb-4">{module.description}</p>
-                            <div className="w-full bg-base-300 rounded-full h-1.5 mb-2">
-                                <div className="bg-primary h-1.5 rounded-full" style={{ width: `${moduleCompletion}%` }}></div>
+                        <div key={module.id} className={`bg-white/50 dark:bg-slate-900/50 p-6 rounded-3xl border border-white/50 dark:border-slate-700/50 backdrop-blur-md shadow-sm transition-all duration-300 ${isUnlocked ? 'hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1' : 'opacity-60 grayscale-[50%]'}`}>
+                            <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">{module.title}</h3>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 h-10 mt-2 mb-5 leading-relaxed">{module.description}</p>
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden shadow-inner">
+                                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1.5 rounded-full" style={{ width: `${moduleCompletion}%` }}></div>
                             </div>
-                            <p className="text-xs font-semibold text-base-content/70 mb-4">{completedInModule} / {lessonsInModule} COMPLETE</p>
-                            <Button className="w-full" disabled={!isUnlocked} onClick={() => { setActiveModule(module); setActiveLesson(module.lessons[0]); }}>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-5">{completedInModule} / {lessonsInModule} COMPLETE</p>
+                            <button
+                                className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 flex items-center justify-center ${isUnlocked
+                                        ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-800 hover:shadow-lg hover:shadow-slate-800/20 active:scale-95'
+                                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                                    }`}
+                                disabled={!isUnlocked}
+                                onClick={() => { setActiveModule(module); setActiveLesson(module.lessons[0]); }}
+                            >
                                 {isUnlocked ? 'Start Learning' : <><LockClosedIcon className="w-4 h-4 mr-2" />Locked</>}
-                            </Button>
+                            </button>
                         </div>
                     )
                 })}
@@ -116,34 +123,34 @@ const AcademyView: React.FC<AcademyViewProps> = ({ profile }) => {
         const videoId = customVideos[activeLesson.id] || activeLesson.videoId;
 
         return (
-            <div className="flex flex-col md:flex-row gap-6 animate-fade-in">
-                <nav className="md:w-1/3 lg:w-1/4 flex flex-col">
-                    <div className="p-4 bg-base-200 rounded-t-lg border-b border-base-300">
-                        <Button variant="ghost" size="sm" onClick={() => setActiveModule(null)} className="mb-2">
-                           <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Modules
-                        </Button>
-                        <h3 className="text-xl font-bold text-text-strong">{activeModule.title}</h3>
+            <div className="flex flex-col md:flex-row gap-6 animate-fade-in h-[60vh]">
+                <nav className="md:w-1/3 lg:w-1/4 flex flex-col bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-3xl shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50">
+                        <button onClick={() => setActiveModule(null)} className="mb-4 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center transition-colors">
+                            <ChevronLeftIcon className="w-4 h-4 mr-1 stroke-[3]" /> Back to Modules
+                        </button>
+                        <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight line-clamp-2">{activeModule.title}</h3>
                     </div>
-                    <div className="space-y-1 p-2 bg-base-200 rounded-b-lg flex-grow">
+                    <div className="space-y-1 p-3 flex-grow overflow-y-auto custom-scrollbar">
                         {activeModule.lessons.map(lesson => (
                             <button
                                 key={lesson.id}
                                 onClick={() => setActiveLesson(lesson)}
-                                className={`w-full text-left p-3 rounded-md transition-all duration-200 flex items-center justify-between text-sm ${activeLesson?.id === lesson.id ? 'bg-primary text-white' : 'hover:bg-base-300'}`}
+                                className={`w-full text-left p-4 rounded-2xl transition-all duration-200 flex items-center justify-between text-sm font-semibold ${activeLesson?.id === lesson.id ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60'}`}
                             >
-                               <span className="font-semibold">{lesson.title}</span>
-                               {isLessonCompleted(lesson.id) && <CheckCircleIcon className="w-5 h-5 text-success shrink-0 ml-2" />}
+                                <span className="line-clamp-2 pr-2">{lesson.title}</span>
+                                {isLessonCompleted(lesson.id) && <CheckCircleIcon className={`w-5 h-5 shrink-0 ${activeLesson?.id === lesson.id ? 'text-white/90' : 'text-emerald-500'}`} />}
                             </button>
                         ))}
                     </div>
                 </nav>
-                <main className="md:w-2/3 lg:w-3/4 bg-base-200 p-6 rounded-lg border border-base-300 min-h-[60vh]">
-                     <div key={activeLesson.id} className="animate-fade-in">
+                <main className="md:w-2/3 lg:w-3/4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/50 dark:border-slate-700/50 p-8 rounded-3xl shadow-sm overflow-y-auto custom-scrollbar">
+                    <div key={activeLesson.id} className="animate-fade-in max-w-3xl mx-auto">
                         {activeLesson.content}
                         {videoId && <YouTubeEmbed videoId={videoId} />}
                         {activeLesson.quiz && (
                             <div className="mt-8 pt-8 border-t border-base-300">
-                                <Quiz 
+                                <Quiz
                                     quiz={activeLesson.quiz}
                                     title={activeLesson.title}
                                     onComplete={(score) => handleCompleteQuiz(activeLesson.id, score)}
@@ -159,9 +166,9 @@ const AcademyView: React.FC<AcademyViewProps> = ({ profile }) => {
     }
 
     return (
-        <Card className="!p-4 sm:!p-6">
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-3xl p-6 sm:p-8">
             {activeModule ? renderLessonView() : renderModuleSelection()}
-        </Card>
+        </div>
     );
 };
 

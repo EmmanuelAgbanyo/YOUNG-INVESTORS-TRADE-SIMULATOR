@@ -26,7 +26,7 @@ const BriefcaseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 const TrendingUpIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
   </svg>
 );
 const ChartPieIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -36,19 +36,33 @@ const ChartPieIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; subValue?: string }> = ({ icon, label, value, subValue }) => (
-    <Card>
-        <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-4">
-                <div className="p-3 bg-base-300 rounded-lg">{icon}</div>
-                <div>
-                    <div className="text-sm text-base-content/70">{label}</div>
-                    <div className="text-2xl font-bold text-text-strong">{value}</div>
-                </div>
-            </div>
-            {subValue && <div className="text-xs text-info font-semibold pt-1">{subValue}</div>}
+const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; subValue?: string; accentGradient?: string; textColorClass?: string }> = ({ icon, label, value, subValue, accentGradient = 'from-blue-500 to-indigo-600', textColorClass = 'text-slate-800 dark:text-white' }) => (
+  <div className="relative overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.15)] rounded-3xl p-6 transition-all duration-500 group hover:-translate-y-2">
+    {/* Subtle top glow line */}
+    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accentGradient} opacity-50 group-hover:opacity-100 transition-opacity duration-300`}></div>
+    {/* Cinematic growing orb behind */}
+    <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${accentGradient} rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none`}></div>
+
+    <div className="flex flex-col space-y-4 relative z-10">
+      <div className="flex items-center justify-between">
+        <div className={`p-3 rounded-2xl bg-gradient-to-br ${accentGradient} text-white shadow-lg shadow-black/10`}>
+          {icon}
         </div>
-    </Card>
+        {/* Could add a trend sparkline here in the future */}
+      </div>
+
+      <div>
+        <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</div>
+        <div className={`text-3xl font-black mt-1 ${textColorClass} drop-shadow-sm`}>{value}</div>
+
+        {subValue && (
+          <div className="mt-2 text-sm font-bold bg-white/50 dark:bg-slate-800/50 inline-block px-3 py-1 rounded-full border border-white/20 dark:border-slate-700/50 shadow-sm backdrop-blur-md">
+            {subValue}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
 );
 
 const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ cash, unsettledCash, holdingsValue, totalValue, totalPnL }) => {
@@ -58,40 +72,44 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ cash, unsettledCash
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  
+
   const pnlColor = totalPnL >= 0 ? 'text-success' : 'text-error';
 
   return (
     <div id="portfolio-summary" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-       <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
-        <StatCard 
-          icon={<ChartPieIcon className="w-6 h-6 text-primary" />}
+      <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
+        <StatCard
+          icon={<ChartPieIcon className="w-7 h-7" />}
           label="Total Portfolio Value"
           value={formatter.format(totalValue)}
-          subValue={formatter.format(totalPnL)}
+          subValue={totalPnL !== 0 ? `Total PnL: ${formatter.format(totalPnL)}` : undefined}
+          accentGradient="from-blue-500 to-indigo-600"
         />
-       </div>
-       <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        <StatCard 
-          icon={<BriefcaseIcon className="w-6 h-6 text-secondary" />}
+      </div>
+      <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+        <StatCard
+          icon={<BriefcaseIcon className="w-7 h-7" />}
           label="Holdings Value"
           value={formatter.format(holdingsValue)}
+          accentGradient="from-indigo-400 to-purple-600"
         />
-       </div>
-       <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-        <StatCard 
-          icon={<CashIcon className="w-6 h-6 text-success" />}
+      </div>
+      <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+        <StatCard
+          icon={<CashIcon className="w-7 h-7" />}
           label="Available Cash"
           value={formatter.format(cash)}
+          accentGradient="from-emerald-400 to-emerald-600"
         />
-       </div>
-       <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-        <StatCard 
-          icon={<TrendingUpIcon className="w-6 h-6 text-info" />}
-          label="Unsettled Cash"
+      </div>
+      <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+        <StatCard
+          icon={<TrendingUpIcon className="w-7 h-7" />}
+          label="Unsettled Funds"
           value={formatter.format(unsettledCash)}
+          accentGradient="from-amber-400 to-orange-500"
         />
-       </div>
+      </div>
     </div>
   );
 };
