@@ -3,22 +3,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "env": {
-    "DATABASE_URL": {
-      "description": "PostgreSQL connection string from Neon",
-      "required": true
-    },
-    "JWT_SECRET": {
-      "description": "JWT secret for token signing (generate with: openssl rand -base64 32)",
-      "required": true
-    },
-    "NODE_ENV": {
-      "description": "Environment (production/development)",
-      "default": "production"
-    },
-    "VITE_API_URL": {
-      "description": "API base URL (e.g., https://your-api.vercel.app)",
-      "required": false
-    }
+    "NODE_ENV": "production"
   },
   "functions": {
     "api": {
