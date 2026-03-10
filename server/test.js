@@ -12,7 +12,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-dotenv.config({ path: '.env.local' });
+dotenv.config();
 
 const { Pool } = pg;
 
