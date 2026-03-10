@@ -220,7 +220,8 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     // LIVE DATA SYNC
     const syncLiveData = useCallback(async () => {
         try {
-            const res = await fetch(`http://localhost:3001/api/market/gse`);
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const res = await fetch(`${API_BASE_URL}/api/market/gse`);
             if (!res.ok) throw new Error('Failed to fetch live data');
             const liveStocks = await res.json();
 

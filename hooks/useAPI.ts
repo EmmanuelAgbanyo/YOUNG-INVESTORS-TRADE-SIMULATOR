@@ -1,5 +1,5 @@
 // Frontend API client for Neon-backed backend
-const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 class APIClient {
   token: string | null = null;
@@ -44,7 +44,7 @@ class APIClient {
 
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'API request failed');
