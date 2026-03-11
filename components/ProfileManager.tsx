@@ -72,12 +72,12 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
         }
     };
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
-        setTimeout(() => { // Simulate network latency for a better UX
+        try {
             // Super Admin Check
             if (loginName === 'Admin' && loginPassword === 'GSE@2024!') {
                 const adminProfile: UserProfile = {
@@ -86,85 +86,108 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                     createdAt: Date.now(),
                 };
                 onProfileSelected(adminProfile);
+                setIsLoading(false);
                 return;
             }
 
-            const profile = profiles.find(p => p.name.toLowerCase() === loginName.toLowerCase());
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: loginName, password: loginPassword })
+            });
+            const data = await res.json();
 
-            if (profile) {
-                // Updated logic: a profile can be password-protected or not.
-                // If it is, the password MUST be provided in the login form.
-                if (profile.password) {
-                    if (verifyPassword(loginPassword, profile.password)) {
-                        onProfileSelected(profile);
-                    } else {
-                        triggerError('Incorrect password.');
-                    }
-                } else {
-                    // If profile is not password protected, log in directly.
-                    onProfileSelected(profile);
-                }
-            } else {
-                triggerError('Profile not found.');
+            if (!res.ok) {
+                triggerError(data.error || 'Invalid credentials.');
+                setIsLoading(false);
+                return;
             }
+
+            localStorage.setItem('yin_trade_token', data.token);
+
+            // Fetch user profiles
+            const profileRes = await fetch(`/api/profiles/${data.userId}`, {
+                headers: { 'Authorization': `Bearer ${data.token}` }
+            });
+            const profilesData = await profileRes.json();
+
+            if (profilesData && profilesData.length > 0) {
+                // For simplicity in this iteration, pick the first profile attached to the user account
+                const selectedProfile = profilesData[0];
+                const activeProfile: UserProfile = {
+                    id: String(selectedProfile.id),
+                    name: selectedProfile.name,
+                    createdAt: Date.now(),
+                    password: loginPassword, // temporarily keeping local hash auth structure satisfied if needed elsewhere
+                };
+
+                // Save to local storage for App.tsx to hydrate on refresh
+                const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
+                const filteredProfiles = existingProfiles.filter((p: UserProfile) => p.id !== activeProfile.id);
+                localStorage.setItem('yin_trade_profiles', JSON.stringify([...filteredProfiles, activeProfile]));
+
+                onProfileSelected(activeProfile);
+            } else {
+                triggerError('No profile associated with this account.');
+            }
+        } catch (err) {
+            triggerError('Network error connecting to authentication server.');
+        } finally {
             setIsLoading(false);
-        }, 500);
+        }
     };
 
-    const handleSignUp = (e: React.FormEvent) => {
+    const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         if (!signupName.trim()) return triggerError('Profile name cannot be empty.');
         if (signupPassword.length < 6) return triggerError('Password must be at least 6 characters long.');
         if (signupPassword !== signupConfirmPassword) return triggerError('Passwords do not match.');
-        if (profiles.some(p => p.name.trim().toLowerCase() === signupName.trim().toLowerCase())) return triggerError('A profile with this name already exists.');
         if (signupName.trim().toLowerCase() === 'admin') return triggerError('This profile name is reserved.');
 
         setIsLoading(true);
 
-        setTimeout(() => {
-            const newProfileId = `user_${Date.now()}`;
-            let teamId: string | undefined = undefined;
+        try {
+            // Note: Currently using the entered "username" as the email structure for the backend API
+            const res = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: signupName.trim(), // treat username as email for simplicity
+                    password: signupPassword,
+                    name: signupName.trim()
+                })
+            });
+            
+            const data = await res.json();
 
-            if (inviteCode.trim()) {
-                try {
-                    const invites: TeamInvite[] = JSON.parse(localStorage.getItem('yin_trade_invites') || '[]');
-                    const teams: Team[] = JSON.parse(localStorage.getItem('yin_trade_teams') || '[]');
-                    const validInvite = invites.find(inv => inv.code === inviteCode.trim());
-
-                    if (!validInvite) {
-                        triggerError('Invalid invite code.');
-                        setIsLoading(false);
-                        return;
-                    }
-                    teamId = validInvite.teamId;
-                    const teamIndex = teams.findIndex(t => t.id === teamId);
-                    if (teamIndex !== -1) {
-                        teams[teamIndex].memberIds.push(newProfileId);
-                        localStorage.setItem('yin_trade_teams', JSON.stringify(teams));
-                    }
-                } catch (e) {
-                    triggerError('Error processing invite code.');
-                    setIsLoading(false);
-                    return;
-                }
+            if (!res.ok) {
+                triggerError(data.error || 'Signup failed.');
+                setIsLoading(false);
+                return;
             }
 
+            localStorage.setItem('yin_trade_token', data.token);
+
+            // Set as active profile instantly
             const newProfile: UserProfile = {
-                id: newProfileId,
+                id: String(data.userId),
                 name: signupName.trim(),
                 createdAt: Date.now(),
-                password: hashPassword(signupPassword),
-                teamId: teamId,
-                isTeamLeader: false,
+                password: hashPassword(signupPassword), // keep local structure for now
             };
+            
+            // Save to local storage for App.tsx to hydrate on refresh
+            const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
+            localStorage.setItem('yin_trade_profiles', JSON.stringify([...existingProfiles, newProfile]));
 
-            const updatedProfiles = [...profiles, newProfile];
-            setProfiles(updatedProfiles);
-            localStorage.setItem('yin_trade_profiles', JSON.stringify(updatedProfiles));
             onProfileSelected(newProfile);
-        }, 500);
+        } catch (err) {
+            triggerError('Network error creating account.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const toggleView = (v: 'login' | 'signup') => {
