@@ -265,8 +265,8 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                         </div>
                     </div>
 
-                    {/* Right Panel: Premium Glassmorphic Form */}
-                    <div className="flex flex-col items-center justify-center p-6 sm:p-12 lg:p-20 relative bg-[#f8fafc] dark:bg-[#020617] z-10 overflow-hidden w-full lg:w-auto">
+                    {/* Right Panel: Auth Forms */}
+                    <div className="flex flex-col justify-center items-center relative bg-white dark:bg-[#0a0f1e] overflow-y-auto py-8 sm:py-12 px-4 sm:px-8 w-full lg:w-auto">
 
                         {/* --- Dynamic Background Elements --- */}
                         {/* Subtle Dot Matrix layout */}
@@ -286,14 +286,14 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                         </div>
 
                         {/* Mobile Branding Header */}
-                        <div className="lg:hidden flex flex-col items-center text-center w-full max-w-md mb-8 animate-fade-in-up relative z-20">
-                            <img src="/yin-logo.png" alt="Young Investors Network" className="h-[40px] mb-4 drop-shadow-md" />
-                            <h1 className="text-3xl font-serif font-bold text-[#1e40af] dark:text-[#60a5fa] drop-shadow-sm">Junior Investors League</h1>
+                        <div className="lg:hidden flex flex-col items-center text-center w-full max-w-md mb-6 animate-fade-in-up relative z-20">
+                            <img src="/yin-logo.png" alt="Young Investors Network" className="h-[32px] sm:h-[40px] mb-3 drop-shadow-md" />
+                            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#1e40af] dark:text-[#60a5fa] drop-shadow-sm">Junior Investors League</h1>
                         </div>
 
                         {/* Glassmorphic Premium Form Container */}
-                        <div className={`w-full max-w-[480px] bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-2xl border border-white dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:shadow-[0_16px_48px_rgba(30,64,175,0.15)] dark:hover:shadow-[0_16px_48px_rgba(30,64,175,0.25)] rounded-[2.5rem] p-8 sm:p-10 relative z-20 transition-all duration-500 hover:-translate-y-1 ${shouldShake ? 'animate-shake' : ''}`}>
-                            <div className="relative h-[530px] w-full">
+                        <div className={`w-full max-w-[480px] bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-2xl border border-white dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:shadow-[0_16px_48px_rgba(30,64,175,0.15)] dark:hover:shadow-[0_16px_48px_rgba(30,64,175,0.25)] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 relative z-20 transition-all duration-500 hover:-translate-y-1 ${shouldShake ? 'animate-shake' : ''}`}>
+                            <div className="relative min-h-[460px] sm:min-h-[530px] w-full">
 
                                 {/* --- Login Form --- */}
                                 <div

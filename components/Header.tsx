@@ -64,12 +64,12 @@ const MarketClock: React.FC<{ status: MarketStatus }> = ({ status }) => {
     const config = statusConfig[status];
 
     return (
-        <div className="flex items-center space-x-2 mr-4">
-            <div className={`relative flex h-3 w-3`}>
+        <div className="flex items-center space-x-1.5">
+            <div className={`relative flex h-2.5 w-2.5 sm:h-3 sm:w-3`}>
                 {config.pulse && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${config.color.replace('text-', 'bg-')}`}></span>}
-                <span className={`relative inline-flex rounded-full h-3 w-3 ${config.color.replace('text-', 'bg-')}`}></span>
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 ${config.color.replace('text-', 'bg-')}`}></span>
             </div>
-            <span className={`font-semibold text-sm ${config.color}`}>{config.text}</span>
+            <span className={`hidden sm:block font-semibold text-xs sm:text-sm ${config.color}`}>{config.text}</span>
         </div>
     );
 };
@@ -170,31 +170,42 @@ const UserMenu: React.FC<{
 
 const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, cash, marketSentiment, marketStatus, onOpenGuide, profile, onLogout, onSecureProfile, onCreateTeam, onViewInviteCode }) => {
     return (
-        <div className="sticky top-4 z-50 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-            <header className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border border-white/40 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)]">
-                <div className="flex items-center justify-between h-16 px-4 sm:px-6">
-                    <div className="flex items-center">
-                        <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-2 rounded-xl mr-3 shadow-lg shadow-blue-500/30 text-white">
-                            <LogoIcon className="w-6 h-6" />
+        <div className="sticky top-2 sm:top-4 z-50 w-full px-2 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <header className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border border-white/40 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-xl sm:rounded-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)]">
+                <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6">
+                    {/* Logo + Title */}
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-1.5 sm:p-2 rounded-lg sm:rounded-xl shrink-0 shadow-lg shadow-blue-500/30 text-white">
+                            <LogoIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
-                        <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white tracking-tight hidden sm:block drop-shadow-sm">
-                            YIN Trade Simulator
+                        <h1 className="text-base sm:text-xl md:text-2xl font-bold text-slate-800 dark:text-white tracking-tight truncate drop-shadow-sm">
+                            <span className="hidden xs:inline">YIN Trade </span>Simulator
                         </h1>
                     </div>
-                    <div className="flex items-center space-x-4">
-                        <MarketClock status={marketStatus} />
+
+                    {/* Right controls */}
+                    <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                        {/* Market status — hide text on very small, show dot always */}
+                        <div className="flex items-center gap-1.5 mr-1 sm:mr-2">
+                            <MarketClock status={marketStatus} />
+                        </div>
+
+                        {/* Guide button — hidden on xs, show sm+ */}
                         <button
                             onClick={onOpenGuide}
                             id="help-guide-button"
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
+                            className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 items-center justify-center rounded-xl bg-slate-100/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
                             aria-label="Open Simulator Guide"
                         >
                             <QuestionMarkCircleIcon className="w-5 h-5" />
                         </button>
-                        <div className="p-1 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 shadow-sm flex items-center justify-center">
+
+                        <div className="p-0.5 sm:p-1 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 shadow-sm flex items-center justify-center">
                             <ThemeSwitcher theme={theme} toggleTheme={toggleTheme} />
                         </div>
-                        <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+
+                        <div className="h-6 sm:h-8 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+
                         <UserMenu cash={cash} profile={profile} onLogout={onLogout} onSecureProfile={onSecureProfile} onCreateTeam={onCreateTeam} onViewInviteCode={onViewInviteCode} />
                     </div>
                 </div>
@@ -202,5 +213,6 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, cash, marketSentime
         </div>
     );
 };
+
 
 export default Header;

@@ -37,26 +37,25 @@ const ChartPieIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; subValue?: string; accentGradient?: string; textColorClass?: string }> = ({ icon, label, value, subValue, accentGradient = 'from-blue-500 to-indigo-600', textColorClass = 'text-slate-800 dark:text-white' }) => (
-  <div className="relative overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.15)] rounded-3xl p-6 transition-all duration-500 group hover:-translate-y-2">
+  <div className="relative overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.15)] rounded-2xl sm:rounded-3xl p-4 sm:p-6 transition-all duration-500 group hover:-translate-y-1 sm:hover:-translate-y-2">
     {/* Subtle top glow line */}
     <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accentGradient} opacity-50 group-hover:opacity-100 transition-opacity duration-300`}></div>
     {/* Cinematic growing orb behind */}
-    <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${accentGradient} rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none`}></div>
+    <div className={`absolute -top-10 -right-10 w-32 sm:w-40 h-32 sm:h-40 bg-gradient-to-br ${accentGradient} rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none`}></div>
 
-    <div className="flex flex-col space-y-4 relative z-10">
+    <div className="flex flex-col space-y-3 sm:space-y-4 relative z-10">
       <div className="flex items-center justify-between">
-        <div className={`p-3 rounded-2xl bg-gradient-to-br ${accentGradient} text-white shadow-lg shadow-black/10`}>
+        <div className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br ${accentGradient} text-white shadow-lg shadow-black/10`}>
           {icon}
         </div>
-        {/* Could add a trend sparkline here in the future */}
       </div>
 
       <div>
-        <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</div>
-        <div className={`text-3xl font-black mt-1 ${textColorClass} drop-shadow-sm`}>{value}</div>
+        <div className="text-[10px] sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</div>
+        <div className={`text-lg sm:text-2xl lg:text-3xl font-black mt-0.5 sm:mt-1 ${textColorClass} drop-shadow-sm leading-tight`}>{value}</div>
 
         {subValue && (
-          <div className="mt-2 text-sm font-bold bg-white/50 dark:bg-slate-800/50 inline-block px-3 py-1 rounded-full border border-white/20 dark:border-slate-700/50 shadow-sm backdrop-blur-md">
+          <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-sm font-bold bg-white/50 dark:bg-slate-800/50 inline-block px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border border-white/20 dark:border-slate-700/50 shadow-sm backdrop-blur-md">
             {subValue}
           </div>
         )}
@@ -76,7 +75,7 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ cash, unsettledCash
   const pnlColor = totalPnL >= 0 ? 'text-success' : 'text-error';
 
   return (
-    <div id="portfolio-summary" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div id="portfolio-summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
       <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
         <StatCard
           icon={<ChartPieIcon className="w-7 h-7" />}
