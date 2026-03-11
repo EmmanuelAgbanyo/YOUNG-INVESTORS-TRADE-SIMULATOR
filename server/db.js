@@ -14,9 +14,13 @@ const { Pool } = pg;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   // Neon-specific optimizations
+  // Neon serverless can cold-start; use generous timeouts
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-  max: 20, // Adjust based on your serverless tier
+  connectionTimeoutMillis: 10000, // increased from 2s to allow Neon cold-start
+  max: 10, // Neon free tier has lower connection limits
+  ssl: {
+    rejectUnauthorized: false, // Required for Neon SSL without a local CA bundle
+  }
 });
 
 pool.on('error', (err) => {
