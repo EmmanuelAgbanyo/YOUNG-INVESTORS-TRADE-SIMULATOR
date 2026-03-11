@@ -278,34 +278,94 @@ app.post('/api/teams/join', verifyToken, async (req, res) => {
 });
 
 // ===== GSE MARKET SCRAPER =====
-import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 app.get('/api/market/gse', async (req, res) => {
   try {
     let stocks = [];
 
-    // Primary Source: Official Kwayisi GSE REST API (Fast, Reliable, JSON)
+    // Primary Source: Scrape AFX Kwayisi (Most reliable currently)
     try {
-      const { data } = await axios.get('https://dev.kwayisi.org/apis/gse/live', {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json'
-        },
-        timeout: 8000
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      const resData = await fetch('https://afx.kwayisi.org/gse/', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      const data = await resData.text();
+
+      const $ = cheerio.load(data);
+      let targetTable = null;
+      
+      $('table').each((i, table) => {
+        const headerText = $(table).find('th').text();
+        if (headerText.includes('Ticker') && headerText.includes('Price')) {
+          targetTable = table;
+          return false;
+        }
       });
 
-      console.log('[GSE API] Raw data:', data);
-      if (Array.isArray(data)) {
-        stocks = data.map(item => ({
-          symbol: item.name, // The API uses 'name' for the ticker symbol (e.g., 'MTNGH')
-          price: parseFloat(item.price) || 0,
-          change: parseFloat(item.change) || 0,
-          volume: parseInt(item.volume) || 0
-        })).filter(s => s.symbol && s.price > 0);
+      if (targetTable) {
+        $(targetTable).find('tbody tr').each((i, row) => {
+          const cols = $(row).find('td');
+          if (cols.length >= 4) {
+            const symbol = $(cols[0]).text().trim();
+            const strPrice = $(cols[1]).text().trim();
+            const strChange = $(cols[2]).text().trim();
+            const strVolume = $(cols[3]).text().trim().replace(/,/g, '');
+
+            if (symbol && strPrice) {
+              stocks.push({
+                symbol,
+                price: parseFloat(strPrice) || 0,
+                change: parseFloat(strChange) || 0,
+                volume: parseInt(strVolume) || 0
+              });
+            }
+          }
+        });
+      }
+      stocks = stocks.filter(s => s.price > 0);
+      if (stocks.length > 0) {
+        console.log('[GSE API] Scraped afx.kwayisi successfully');
       }
     } catch (apiError) {
-      console.error('Kwayisi REST API Fetch Error:', apiError.message);
+      console.error('AFX Scrape Error:', apiError.message);
+    }
+
+    // Secondary Source: Official Kwayisi GSE REST API (Fast, Reliable, JSON - sometimes offline)
+    if (stocks.length === 0) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const apiRes = await fetch('https://dev.kwayisi.org/apis/gse/live', {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json'
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (apiRes.ok) {
+          const data = await apiRes.json();
+          console.log('[GSE API] dev.kwayisi fetch raw data length:', data?.length);
+          if (Array.isArray(data) && data.length > 0) {
+            stocks = data.map(item => ({
+              symbol: item.name,
+              price: parseFloat(item.price) || 0,
+              change: parseFloat(item.change) || 0,
+              volume: parseInt(item.volume) || 0
+            })).filter(s => s.symbol && s.price > 0);
+            console.log('[GSE API] dev.kwayisi.org fetch success');
+          }
+        }
+      } catch (apiError) {
+        console.error('Kwayisi REST API Fetch Error:', apiError.message);
+      }
     }
 
     if (stocks.length > 0) {

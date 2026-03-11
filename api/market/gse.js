@@ -15,7 +15,63 @@ export default async function handler(req, res) {
   try {
     let stocks = [];
 
-    // METHOD 1: Primary Source - Kwayisi GSE REST API
+    // METHOD 1: Primary Source - Scrape AFX Kwayisi (Most Reliable)
+    try {
+      // Use native fetch to avoid Vercel dependency build issues
+      const cheerio = await import('cheerio');
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      
+      const resData = await fetch('https://afx.kwayisi.org/gse/', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      const data = await resData.text();
+
+      const $ = cheerio.load(data);
+      let targetTable = null;
+      
+      $('table').each((i, table) => {
+        const headerText = $(table).find('th').text();
+        if (headerText.includes('Ticker') && headerText.includes('Price')) {
+          targetTable = table;
+          return false; // break
+        }
+      });
+
+      if (targetTable) {
+        $(targetTable).find('tbody tr').each((i, row) => {
+          const cols = $(row).find('td');
+          if (cols.length >= 4) {
+            const symbol = $(cols[0]).text().trim();
+            const strPrice = $(cols[1]).text().trim();
+            const strChange = $(cols[2]).text().trim();
+            const strVolume = $(cols[3]).text().trim().replace(/,/g, '');
+
+            if (symbol && strPrice) {
+              stocks.push({
+                symbol,
+                price: parseFloat(strPrice) || 0,
+                change: parseFloat(strChange) || 0,
+                volume: parseInt(strVolume) || 0
+              });
+            }
+          }
+        });
+      }
+
+      stocks = stocks.filter(s => s.price > 0);
+      if (stocks.length > 0) {
+        console.log('[GSE API] Method 1 Success (Scraped afx.kwayisi)');
+        return res.status(200).json(stocks);
+      }
+    } catch (scrapeError) {
+      console.warn('Method 1 (afx.kwayisi scrape) Failed:', scrapeError.message);
+    }
+
+    // METHOD 2: Secondary Source - dev.kwayisi REST API
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout
@@ -38,52 +94,12 @@ export default async function handler(req, res) {
             change: parseFloat(item.change) || 0,
             volume: parseInt(item.volume) || 0
           })).filter(s => s.symbol && s.price > 0);
-          console.log('[GSE API] Method 1 Success');
+          console.log('[GSE API] Method 2 Success (dev.kwayisi API)');
           return res.status(200).json(stocks);
         }
       }
     } catch (apiError) {
-      console.warn('Method 1 (dev.kwayisi.org) Failed:', apiError.message);
-    }
-
-    // METHOD 2: Secondary Source - Scrape AFX Kwayisi
-    try {
-      // Dynamic import to avoid Vercel crashing if package is missing
-      const axios = (await import('axios')).default;
-      const cheerio = await import('cheerio');
-
-      const { data } = await axios.get('https://afx.kwayisi.org/gse/', {
-        timeout: 4000,
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-      });
-
-      const $ = cheerio.load(data);
-      $('table.t tbody tr').each((i, row) => {
-        const cols = $(row).find('td');
-        if (cols.length >= 4) {
-          const symbol = $(cols[0]).text().trim();
-          const priceStr = $(cols[2]).text().trim();
-          const changeStr = $(cols[3]).text().trim();
-          const volumeStr = $(cols[4]).text().trim().replace(/,/g, '');
-
-          if (symbol && priceStr) {
-            stocks.push({
-              symbol,
-              price: parseFloat(priceStr) || 0,
-              change: parseFloat(changeStr) || 0,
-              volume: parseInt(volumeStr) || 0
-            });
-          }
-        }
-      });
-
-      stocks = stocks.filter(s => s.price > 0);
-      if (stocks.length > 0) {
-        console.log('[GSE API] Method 2 Success');
-        return res.status(200).json(stocks);
-      }
-    } catch (scrapeError) {
-      console.warn('Method 2 (afx.kwayisi scrape) Failed:', scrapeError.message);
+      console.warn('Method 2 (dev.kwayisi.org) Failed:', apiError.message);
     }
 
     // METHOD 3: Fallback - Official GSE API
@@ -99,7 +115,6 @@ export default async function handler(req, res) {
 
       if (officialResponse.ok) {
         const rawData = await officialResponse.json();
-        // Adjust depending on actual response schema of devco
         const dataArray = rawData.data || rawData.items || rawData;
 
         if (Array.isArray(dataArray) && dataArray.length > 0) {
@@ -111,7 +126,7 @@ export default async function handler(req, res) {
           })).filter(s => s.symbol && s.price > 0);
 
           if (stocks.length > 0) {
-            console.log('[GSE API] Method 3 Success');
+            console.log('[GSE API] Method 3 Success (Official GSE API)');
             return res.status(200).json(stocks);
           }
         }
