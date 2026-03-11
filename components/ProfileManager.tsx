@@ -90,7 +90,8 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                 return;
             }
 
-            const res = await fetch('/api/auth/login', {
+            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
+            const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: loginName, password: loginPassword })
@@ -106,7 +107,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
             localStorage.setItem('yin_trade_token', data.token);
 
             // Fetch user profiles
-            const profileRes = await fetch(`/api/profiles/${data.userId}`, {
+            const profileRes = await fetch(`${API_BASE_URL}/api/profiles/${data.userId}`, {
                 headers: { 'Authorization': `Bearer ${data.token}` }
             });
             const profilesData = await profileRes.json();
@@ -149,8 +150,8 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
         setIsLoading(true);
 
         try {
-            // Note: Currently using the entered "username" as the email structure for the backend API
-            const res = await fetch('/api/auth/signup', {
+            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
+            const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -170,19 +171,32 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
 
             localStorage.setItem('yin_trade_token', data.token);
 
-            // Set as active profile instantly
-            const newProfile: UserProfile = {
-                id: String(data.userId),
-                name: signupName.trim(),
-                createdAt: Date.now(),
-                password: hashPassword(signupPassword), // keep local structure for now
-            };
-            
-            // Save to local storage for App.tsx to hydrate on refresh
-            const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
-            localStorage.setItem('yin_trade_profiles', JSON.stringify([...existingProfiles, newProfile]));
+            // Fetch user profile from the database to get the real profile ID
+            // "LOG IN AFTER SIGN UP FEEDBACK" fix involves ensuring they are fully 
+            // hydrated exactly like a normal login to prevent state bugs.
+            const profileRes = await fetch(`${API_BASE_URL}/api/profiles/${data.userId}`, {
+                headers: { 'Authorization': `Bearer ${data.token}` }
+            });
+            const profilesData = await profileRes.json();
 
-            onProfileSelected(newProfile);
+            if (profilesData && profilesData.length > 0) {
+                const selectedProfile = profilesData[0];
+                const activeProfile: UserProfile = {
+                    id: String(selectedProfile.id),
+                    name: selectedProfile.name,
+                    createdAt: Date.now(),
+                    password: loginPassword || hashPassword(signupPassword),
+                };
+
+                // Save to local storage for App.tsx to hydrate on refresh
+                const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
+                const filteredProfiles = existingProfiles.filter((p: UserProfile) => p.id !== activeProfile.id);
+                localStorage.setItem('yin_trade_profiles', JSON.stringify([...filteredProfiles, activeProfile]));
+
+                onProfileSelected(activeProfile);
+            } else {
+                triggerError('Profile creation on backend failed during signup.');
+            }
         } catch (err) {
             triggerError('Network error creating account.');
         } finally {
