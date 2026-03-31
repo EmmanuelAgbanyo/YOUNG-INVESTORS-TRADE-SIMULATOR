@@ -2,10 +2,8 @@
 
 
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { NewsHeadline } from '../types.ts';
-import Card from './ui/Card.tsx';
-import Button from './ui/Button.tsx';
 
 interface MarketNewsFeedProps {
     news: NewsHeadline[];
@@ -29,6 +27,13 @@ const LoadingSpinner: React.FC = () => (
 
 const MarketNewsFeed: React.FC<MarketNewsFeedProps> = ({ news, isLoading, onRefresh }) => {
     const error = !isLoading && news.length === 0 ? 'Could not fetch market news.' : null;
+    const [lastRefreshed, setLastRefreshed] = useState<string>('');
+
+    useEffect(() => {
+        if (!isLoading && news.length > 0) {
+            setLastRefreshed(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+        }
+    }, [isLoading, news]);
 
     const impactColors = {
         positive: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-400',
@@ -43,7 +48,10 @@ const MarketNewsFeed: React.FC<MarketNewsFeedProps> = ({ news, isLoading, onRefr
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-md">
                         <NewspaperIcon className="w-5 h-5" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Market News</h3>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight leading-none">Market News</h3>
+                        {lastRefreshed && <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">Updated {lastRefreshed}</p>}
+                    </div>
                 </div>
                 <div className="flex items-center space-x-2 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-500/20">
                     <div className="relative flex h-2.5 w-2.5">
@@ -78,7 +86,7 @@ const MarketNewsFeed: React.FC<MarketNewsFeedProps> = ({ news, isLoading, onRefr
                     disabled={isLoading}
                     className="px-6 py-2 rounded-xl text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Refesh Feed
+                    Refresh Feed
                 </button>
             </div>
         </div>

@@ -1,0 +1,53 @@
+{
+  "rules": {
+    "market_data": {
+      ".read": true,
+      ".write": true
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "profiles": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["user_id"],
+      "$profileId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "portfolios": {
+      "$profileId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "holdings": {
+      "$profileId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "orders": {
+      "$profileId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "teams": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "team_members": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "team_invites": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

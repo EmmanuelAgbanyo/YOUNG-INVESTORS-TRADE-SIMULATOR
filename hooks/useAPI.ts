@@ -1,119 +1,294 @@
-// Frontend API client for Neon-backed backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
+import { auth, database } from '../firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut,
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider
+} from 'firebase/auth';
+import { 
+  ref, 
+  get, 
+  set, 
+  push, 
+  child, 
+  query, 
+  orderByChild, 
+  equalTo
+} from 'firebase/database';
 
 class APIClient {
-  token: string | null = null;
+  private googleProvider = new GoogleAuthProvider();
 
-  constructor() {
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      this.token = localStorage.getItem('auth_token');
-    }
-  }
-
-  setToken(token: string) {
-    this.token = token;
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('auth_token', token);
-    }
-  }
-
-  clearToken() {
-    this.token = null;
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('auth_token');
-    }
-  }
-
-  async request(method: string, endpoint: string, body: any = null) {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    }
-
-    const options: RequestInit = {
-      method,
-      headers,
-    };
-
-    if (body) {
-      options.body = JSON.stringify(body);
-    }
-
+  // Google Auth endpoint
+  async loginWithGoogle() {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+      const result = await signInWithPopup(auth, this.googleProvider);
+      const user = result.user;
+      
+      // Check if profile exists
+      const profiles = await this.getProfiles(user.uid);
+      
+      if (profiles.length === 0) {
+        // Create a default profile for the first-time sign-in
+        const profileRef = push(ref(database, 'profiles'));
+        const profileId = profileRef.key;
+        await set(profileRef, {
+          user_id: user.uid,
+          email: user.email,
+          name: user.displayName || 'User',
+          bio: "",
+          avatar_url: user.photoURL || "",
+          theme: "dark",
+          createdAt: Date.now()
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'API request failed');
+        // Initialize default portfolio
+        await set(ref(database, `portfolios/${profileId}`), {
+          cash: 100000.00,
+          createdAt: Date.now()
+        });
       }
 
-      return await response.json();
-    } catch (err) {
-      console.error(`API Error [${method} ${endpoint}]:`, err);
-      throw err;
+      return { token: user.accessToken, userId: user.uid };
+    } catch (err: any) {
+      console.error("Google Login Error:", err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        throw new Error('Sign-In popup was closed before completion. Please try again.');
+      }
+      throw new Error(err.message || 'Google Sign-In failed.');
+    }
+  }
+  
+  // Auth endpoints
+  async signup(email: string, password: string, name: string) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Update Auth display name
+      await updateProfile(user, { displayName: name });
+
+      // Create a default profile for the user in RTDB
+      const profileRef = push(ref(database, 'profiles'));
+      const profileId = profileRef.key;
+      await set(profileRef, {
+        user_id: user.uid,
+        email: email,
+        name: name,
+        bio: "",
+        avatar_url: "",
+        theme: "dark",
+        createdAt: Date.now()
+      });
+
+      // Initialize default portfolio with starting cash
+      await set(ref(database, `portfolios/${profileId}`), {
+        cash: 100000.00,
+        createdAt: Date.now()
+      });
+
+      return { token: user.accessToken, userId: user.uid };
+    } catch (err: any) {
+      console.error("Signup Error:", err);
+      // Map Firebase error codes to friendly messages
+      if (err.code === 'auth/email-already-in-use') {
+        throw new Error('This username is already taken. Please log in or choose a different username.');
+      } else if (err.code === 'auth/weak-password') {
+        throw new Error('Password is too weak. Please use at least 6 characters.');
+      } else if (err.code === 'auth/invalid-email') {
+        throw new Error('Invalid username format. Please avoid special characters.');
+      } else if (err.code === 'auth/network-request-failed') {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      } else if (err.code === 'PERMISSION_DENIED' || err.message?.includes('PERMISSION_DENIED')) {
+        throw new Error('Database permission error. Please contact support.');
+      }
+      throw new Error(err.message || 'Signup failed. Please try again.');
     }
   }
 
-  // Auth endpoints
-  async signup(email, password, name) {
-    const data = await this.request('POST', '/api/auth/signup', {
-      email,
-      password,
-      name,
-    });
-    this.setToken(data.token);
-    return data;
+  async login(email: string, password: string) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return { token: userCredential.user.accessToken, userId: userCredential.user.uid };
+    } catch (err: any) {
+      console.error("Login Error:", err);
+      // Map Firebase error codes to friendly messages
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-login-credentials') {
+        throw new Error('Incorrect username or password. Please try again.');
+      } else if (err.code === 'auth/too-many-requests') {
+        throw new Error('Too many failed attempts. Please wait a moment and try again.');
+      } else if (err.code === 'auth/network-request-failed') {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      } else if (err.code === 'PERMISSION_DENIED' || err.message?.includes('PERMISSION_DENIED')) {
+        throw new Error('Database permission error. Please contact support.');
+      }
+      throw new Error(err.message || 'Login failed. Please try again.');
+    }
   }
 
-  async login(email, password) {
-    const data = await this.request('POST', '/api/auth/login', {
-      email,
-      password,
-    });
-    this.setToken(data.token);
-    return data;
+  async logout() {
+      return signOut(auth);
   }
 
   // Profile endpoints
-  async getProfiles(userId) {
-    return this.request('GET', `/api/profiles/${userId}`);
+  async getProfiles(userId: string) {
+    try {
+      const profilesQuery = query(ref(database, 'profiles'), orderByChild('user_id'), equalTo(userId));
+      const snapshot = await get(profilesQuery);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        // Convert object map to array
+        return Object.keys(data).map(key => ({ id: key, ...data[key] }));
+      }
+      return [];
+    } catch (err: any) {
+      throw new Error(err.message || 'API request failed');
+    }
   }
 
-  async createProfile(name) {
-    return this.request('POST', '/api/profiles', { name });
+  async createProfile(name: string) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Unauthorized");
+
+    const profileRef = push(ref(database, 'profiles'));
+    const profileId = profileRef.key;
+    const profileData = {
+        user_id: user.uid,
+        name: name,
+        bio: "",
+        avatar_url: "",
+        theme: "dark",
+        createdAt: Date.now()
+    };
+    await set(profileRef, profileData);
+
+    await set(ref(database, `portfolios/${profileId}`), {
+      cash: 100000.00,
+      createdAt: Date.now()
+    });
+
+    return { id: profileId, ...profileData };
   }
 
   // Portfolio endpoints
-  async getPortfolio(profileId) {
-    return this.request('GET', `/api/portfolios/${profileId}`);
+  async getPortfolio(profileId: string) {
+    try {
+      const portfolioSnap = await get(ref(database, `portfolios/${profileId}`));
+      if (!portfolioSnap.exists()) {
+        throw new Error('Portfolio not found');
+      }
+      
+      const portfolio = portfolioSnap.val();
+      portfolio.id = profileId;
+
+      const holdingsSnap = await get(ref(database, `holdings/${profileId}`));
+      portfolio.holdings = holdingsSnap.exists() ? holdingsSnap.val() : {};
+
+      return portfolio;
+    } catch (err: any) {
+      throw new Error(err.message || 'API request failed');
+    }
   }
 
   // Orders endpoints
-  async placeOrder(portfolioId, symbol, tradeType, orderType, quantity, limitPrice = null) {
-    return this.request('POST', '/api/orders', {
-      portfolioId,
-      symbol,
-      tradeType,
-      orderType,
-      quantity,
-      limitPrice,
-    });
+  async placeOrder(portfolioId: string, symbol: string, tradeType: string, orderType: string, quantity: number, limitPrice: number | null = null) {
+    try {
+      // In a real app, logic to deduct cash & update holdings occurs in a secure backend environment or heavily validated Cloud Functions.
+      // For simulator simplicity, we write it locally here.
+      const orderRef = push(ref(database, `orders/${portfolioId}`));
+      const orderData = {
+        symbol,
+        trade_type: tradeType,
+        order_type: orderType,
+        quantity,
+        limit_price: limitPrice,
+        status: 'PENDING',
+        created_at: Date.now()
+      };
+      
+      await set(orderRef, orderData);
+      
+      // Update portfolio holdings right away as a simulator shortcut:
+      const portfolioRef = ref(database, `portfolios/${portfolioId}`);
+      const portSnap = await get(portfolioRef);
+      if (!portSnap.exists()) throw new Error("Portfolio not found");
+      const currentCash = portSnap.val().cash || 0;
+
+      // Fetch live price
+      const marketSnap = await get(ref(database, `market_data/${symbol}`));
+      if (!marketSnap.exists()) throw new Error("Market data not available for " + symbol);
+      const currentPrice = marketSnap.val().price;
+
+      const holdingRef = ref(database, `holdings/${portfolioId}/${symbol}`);
+      const holdSnap = await get(holdingRef);
+      let holdData = holdSnap.exists() ? holdSnap.val() : { quantity: 0, avg_cost: 0 };
+
+      const totalCost = currentPrice * quantity;
+
+      if (tradeType === 'BUY') {
+         if (currentCash < totalCost) throw new Error("Insufficient funds");
+         // Recalculate avg cost
+         const newTotalQty = holdData.quantity + quantity;
+         const newAvgCost = ((holdData.avg_cost * holdData.quantity) + totalCost) / newTotalQty;
+         await set(holdingRef, { quantity: newTotalQty, avg_cost: newAvgCost });
+         await set(portfolioRef, { ...portSnap.val(), cash: currentCash - totalCost });
+      } else if (tradeType === 'SELL') {
+         if (holdData.quantity < quantity) throw new Error("Insufficient shares");
+         await set(holdingRef, { quantity: holdData.quantity - quantity, avg_cost: holdData.avg_cost });
+         await set(portfolioRef, { ...portSnap.val(), cash: currentCash + totalCost });
+      }
+
+      await set(orderRef, { ...orderData, status: 'EXECUTED', executed_at: Date.now(), price: currentPrice });
+      return { id: orderRef.key, ...orderData, status: 'EXECUTED' };
+    } catch (err: any) {
+        throw new Error(err.message || "Order placement failed");
+    }
   }
 
-  async getOrders(portfolioId) {
-    return this.request('GET', `/api/orders/${portfolioId}`);
+  async getOrders(portfolioId: string) {
+    const ordersSnap = await get(ref(database, `orders/${portfolioId}`));
+    if (ordersSnap.exists()) {
+      const data = ordersSnap.val();
+      return Object.keys(data).map(key => ({ id: key, ...data[key] })).sort((a,b) => b.created_at - a.created_at);
+    }
+    return [];
   }
 
   // Teams endpoints
-  async createTeam(profileId, teamName) {
-    return this.request('POST', '/api/teams', { profileId, teamName });
+  async createTeam(profileId: string, teamName: string) {
+    const teamRef = push(ref(database, 'teams'));
+    const teamId = teamRef.key;
+    await set(teamRef, {
+      name: teamName,
+      leader_id: profileId,
+      created_at: Date.now()
+    });
+
+    const inviteCode = `${teamName.substring(0, 4).toUpperCase()}${Math.random().toString(36).substring(2, 6)}`;
+    await set(ref(database, `team_invites/${inviteCode}`), {
+      team_id: teamId,
+      created_at: Date.now()
+    });
+
+    await set(ref(database, `team_members/${teamId}/${profileId}`), {
+      joined_at: Date.now()
+    });
+
+    return { id: teamId, name: teamName, inviteCode };
   }
 
-  async joinTeam(profileId, inviteCode) {
-    return this.request('POST', '/api/teams/join', { profileId, inviteCode });
+  async joinTeam(profileId: string, inviteCode: string) {
+    const inviteSnap = await get(ref(database, `team_invites/${inviteCode}`));
+    if (!inviteSnap.exists()) throw new Error('Invalid or expired invite code');
+    
+    const teamId = inviteSnap.val().team_id;
+    await set(ref(database, `team_members/${teamId}/${profileId}`), {
+        joined_at: Date.now()
+    });
+
+    return { message: 'Joined team successfully', teamId };
   }
 }
 

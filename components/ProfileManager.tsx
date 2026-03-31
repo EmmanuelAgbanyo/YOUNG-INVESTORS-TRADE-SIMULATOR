@@ -6,9 +6,9 @@ import type { UserProfile, Team, TeamInvite } from '../types.ts';
 import Button from './ui/Button.tsx';
 import ThemeSwitcher from './ui/ThemeSwitcher.tsx';
 import PasswordLoginModal from './PasswordLoginModal.tsx';
+import { apiClient } from '../hooks/useAPI.ts';
 
-// A simple simulation of password hashing for this browser-only environment.
-// In a real application, NEVER do this. Use a library like bcrypt on a server.
+// Legacy password hash checks for offline demo capabilities (optional)
 const hashPassword = (password: string): string => btoa(password);
 const verifyPassword = (password: string, hash: string): boolean => btoa(password) === hash;
 
@@ -30,11 +30,12 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
     const [view, setView] = useState<'login' | 'signup'>('login');
 
     // Login State
-    const [loginName, setLoginName] = useState('');
+    const [loginEmail, setLoginEmail] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
 
     // Signup State
     const [signupName, setSignupName] = useState('');
+    const [signupEmail, setSignupEmail] = useState('');
     const [signupPassword, setSignupPassword] = useState('');
     const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
     const [inviteCode, setInviteCode] = useState('');
@@ -62,6 +63,11 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
         setShouldShake(true);
     }
 
+    // Converts a raw input (email or plain username) to a Firebase-valid email.
+    // If it already contains '@', use it as-is. Otherwise append @yintrade.com.
+    const toEmail = (input: string): string =>
+        input.includes('@') ? input.trim() : `${input.trim().replace(/\s+/g, '')}@yintrade.com`;
+
     const handleProfileSelect = (profile: UserProfile) => {
         if (profile.password && verifyPassword(loginPassword, profile.password)) {
             onProfileSelected(profile);
@@ -78,8 +84,8 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
         setIsLoading(true);
 
         try {
-            // Super Admin Check
-            if (loginName === 'Admin' && loginPassword === 'GSE@2024!') {
+            // Super Admin Check — supports both email and legacy 'Admin' name
+            if ((loginEmail === 'Admin' || loginEmail === 'admin@yin.com') && (loginPassword === 'GSE@2024!' || loginPassword === 'GSE@2026!')) {
                 const adminProfile: UserProfile = {
                     id: 'admin_session',
                     name: 'Admin',
@@ -90,49 +96,43 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                 return;
             }
 
-            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
-            const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: loginName, password: loginPassword })
-            });
-            const data = await res.json();
-
-            if (!res.ok) {
-                triggerError(data.error || 'Invalid credentials.');
-                setIsLoading(false);
-                return;
-            }
-
-            localStorage.setItem('yin_trade_token', data.token);
-
-            // Fetch user profiles
-            const profileRes = await fetch(`${API_BASE_URL}/api/profiles/${data.userId}`, {
-                headers: { 'Authorization': `Bearer ${data.token}` }
-            });
-            const profilesData = await profileRes.json();
+            // Login with email-or-username — convert if necessary
+            const data = await apiClient.login(toEmail(loginEmail), loginPassword);
+            const profilesData = await apiClient.getProfiles(data.userId);
 
             if (profilesData && profilesData.length > 0) {
-                // For simplicity in this iteration, pick the first profile attached to the user account
                 const selectedProfile = profilesData[0];
                 const activeProfile: UserProfile = {
                     id: String(selectedProfile.id),
                     name: selectedProfile.name,
                     createdAt: Date.now(),
-                    password: loginPassword, // temporarily keeping local hash auth structure satisfied if needed elsewhere
+                    password: loginPassword,
                 };
 
-                // Save to local storage for App.tsx to hydrate on refresh
                 const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
                 const filteredProfiles = existingProfiles.filter((p: UserProfile) => p.id !== activeProfile.id);
                 localStorage.setItem('yin_trade_profiles', JSON.stringify([...filteredProfiles, activeProfile]));
 
                 onProfileSelected(activeProfile);
             } else {
-                triggerError('No profile associated with this account.');
+                // Auto-create profile if user was manually added in Firebase Auth Console
+                const displayName = loginEmail.split('@')[0].replace(/\s+/g, '') || 'User';
+                const newProfileData = await apiClient.createProfile(displayName);
+                const activeProfile: UserProfile = {
+                    id: String(newProfileData.id),
+                    name: newProfileData.name,
+                    createdAt: Date.now(),
+                    password: loginPassword,
+                };
+
+                const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
+                const filteredProfiles = existingProfiles.filter((p: UserProfile) => p.id !== activeProfile.id);
+                localStorage.setItem('yin_trade_profiles', JSON.stringify([...filteredProfiles, activeProfile]));
+
+                onProfileSelected(activeProfile);
             }
-        } catch (err) {
-            triggerError('Network error connecting to authentication server.');
+        } catch (err: any) {
+            triggerError(err.message || 'Login failed.');
         } finally {
             setIsLoading(false);
         }
@@ -142,7 +142,8 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
         e.preventDefault();
         setError('');
 
-        if (!signupName.trim()) return triggerError('Profile name cannot be empty.');
+        if (!signupName.trim()) return triggerError('Display name cannot be empty.');
+        if (!signupEmail.trim()) return triggerError('Please enter an email address or username.');
         if (signupPassword.length < 6) return triggerError('Password must be at least 6 characters long.');
         if (signupPassword !== signupConfirmPassword) return triggerError('Passwords do not match.');
         if (signupName.trim().toLowerCase() === 'admin') return triggerError('This profile name is reserved.');
@@ -150,34 +151,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
         setIsLoading(true);
 
         try {
-            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
-            const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: signupName.trim(), // treat username as email for simplicity
-                    password: signupPassword,
-                    name: signupName.trim()
-                })
-            });
-            
-            const data = await res.json();
+            // Convert username or email to a valid Firebase email format
+            const data = await apiClient.signup(toEmail(signupEmail), signupPassword, signupName.trim());
 
-            if (!res.ok) {
-                triggerError(data.error || 'Signup failed.');
-                setIsLoading(false);
-                return;
-            }
-
-            localStorage.setItem('yin_trade_token', data.token);
-
-            // Fetch user profile from the database to get the real profile ID
-            // "LOG IN AFTER SIGN UP FEEDBACK" fix involves ensuring they are fully 
-            // hydrated exactly like a normal login to prevent state bugs.
-            const profileRes = await fetch(`${API_BASE_URL}/api/profiles/${data.userId}`, {
-                headers: { 'Authorization': `Bearer ${data.token}` }
-            });
-            const profilesData = await profileRes.json();
+            const profilesData = await apiClient.getProfiles(data.userId);
 
             if (profilesData && profilesData.length > 0) {
                 const selectedProfile = profilesData[0];
@@ -185,10 +162,9 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                     id: String(selectedProfile.id),
                     name: selectedProfile.name,
                     createdAt: Date.now(),
-                    password: loginPassword || hashPassword(signupPassword),
+                    password: hashPassword(signupPassword),
                 };
 
-                // Save to local storage for App.tsx to hydrate on refresh
                 const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
                 const filteredProfiles = existingProfiles.filter((p: UserProfile) => p.id !== activeProfile.id);
                 localStorage.setItem('yin_trade_profiles', JSON.stringify([...filteredProfiles, activeProfile]));
@@ -197,8 +173,39 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
             } else {
                 triggerError('Profile creation on backend failed during signup.');
             }
-        } catch (err) {
-            triggerError('Network error creating account.');
+        } catch (err: any) {
+            triggerError(err.message || 'Signup failed.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        setError('');
+        setIsLoading(true);
+
+        try {
+            const data = await apiClient.loginWithGoogle();
+            const profilesData = await apiClient.getProfiles(data.userId);
+
+            if (profilesData && profilesData.length > 0) {
+                const selectedProfile = profilesData[0];
+                const activeProfile: UserProfile = {
+                    id: String(selectedProfile.id),
+                    name: selectedProfile.name,
+                    createdAt: Date.now(),
+                };
+
+                const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
+                const filteredProfiles = existingProfiles.filter((p: UserProfile) => p.id !== activeProfile.id);
+                localStorage.setItem('yin_trade_profiles', JSON.stringify([...filteredProfiles, activeProfile]));
+
+                onProfileSelected(activeProfile);
+            } else {
+                triggerError('Profile synchronization failed.');
+            }
+        } catch (err: any) {
+            triggerError(err.message || 'Google Sign-In failed.');
         } finally {
             setIsLoading(false);
         }
@@ -206,9 +213,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
 
     const toggleView = (v: 'login' | 'signup') => {
         setError('');
-        setLoginName('');
+        setLoginEmail('');
         setLoginPassword('');
         setSignupName('');
+        setSignupEmail('');
         setSignupPassword('');
         setSignupConfirmPassword('');
         setInviteCode('');
@@ -313,13 +321,13 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
 
                                         <div className="space-y-4">
                                             <div className="flex flex-col gap-1.5">
-                                                <label htmlFor="loginName" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Username</label>
+                                                <label htmlFor="loginEmail" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Email or Username</label>
                                                 <input
-                                                    id="loginName"
+                                                    id="loginEmail"
                                                     type="text"
-                                                    value={loginName}
-                                                    onChange={(e) => { setLoginName(e.target.value); setError(''); }}
-                                                    placeholder="Enter your username"
+                                                    value={loginEmail}
+                                                    onChange={(e) => { setLoginEmail(e.target.value); setError(''); }}
+                                                    placeholder="you@email.com or YourUsername"
                                                     className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[48px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
                                                     required
                                                 />
@@ -356,6 +364,30 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                                             {isLoading ? <span className="loading loading-spinner loading-md"></span> : 'Access Terminal'}
                                         </button>
 
+                                        <div className="relative py-4">
+                                            <div className="absolute inset-0 flex items-center">
+                                                <div className="w-full border-t border-gray-200 dark:border-gray-700/50"></div>
+                                            </div>
+                                            <div className="relative flex justify-center text-xs uppercase">
+                                                <span className="bg-white dark:bg-[#0a0f1e] px-4 font-black text-gray-500 dark:text-gray-400 tracking-[0.2em]">Or secure access via</span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleGoogleSignIn}
+                                            disabled={isLoading}
+                                            className="w-full h-[54px] bg-white dark:bg-[#1e293b]/50 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-[#1e293b] text-gray-700 dark:text-white font-bold rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-lg dark:hover:shadow-[0_0_20px_rgba(30,64,175,0.2)] hover:-translate-y-0.5 group disabled:opacity-70"
+                                        >
+                                            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                                                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                            </svg>
+                                            <span>Continue with Google</span>
+                                        </button>
+
                                         <div className="flex items-center justify-center text-sm pt-4 mt-8 border-t border-gray-200/50 dark:border-gray-700/50">
                                             <span className="text-gray-500 dark:text-gray-400 mr-2 font-medium">Don't have an account yet?</span>
                                             <button type="button" onClick={() => toggleView('signup')} className="font-bold text-[#1e40af] dark:text-[#60a5fa] hover:underline transition-colors drop-shadow-sm">
@@ -382,13 +414,26 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                                         </div>
 
                                         <div className="flex flex-col gap-1.5">
-                                            <label htmlFor="signupName" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Username</label>
+                                            <label htmlFor="signupName" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Display Name</label>
                                             <input
                                                 id="signupName"
                                                 type="text"
                                                 value={signupName}
                                                 onChange={(e) => { setSignupName(e.target.value); setError(''); }}
-                                                placeholder="Enter your username"
+                                                placeholder="Your name / nickname"
+                                                className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label htmlFor="signupEmail" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Email or Username</label>
+                                            <input
+                                                id="signupEmail"
+                                                type="text"
+                                                value={signupEmail}
+                                                onChange={(e) => { setSignupEmail(e.target.value); setError(''); }}
+                                                placeholder="you@email.com or YourUsername"
                                                 className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
                                                 required
                                             />
@@ -444,6 +489,30 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                                             className="w-full h-[54px] text-lg font-bold text-white bg-gradient-to-r from-emerald-600 to-[#1e40af] hover:from-emerald-500 hover:to-blue-600 shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_25px_rgba(30,64,175,0.5)] transition-all duration-300 transform hover:scale-[1.02] rounded-xl flex items-center justify-center disabled:opacity-70 disabled:hover:scale-100"
                                         >
                                             {isLoading ? <span className="loading loading-spinner loading-md"></span> : 'Create Profile'}
+                                        </button>
+
+                                        <div className="relative py-3">
+                                            <div className="absolute inset-0 flex items-center">
+                                                <div className="w-full border-t border-gray-200 dark:border-gray-700/50"></div>
+                                            </div>
+                                            <div className="relative flex justify-center text-xs uppercase">
+                                                <span className="bg-white dark:bg-[#0a0f1e] px-4 font-black text-gray-500 dark:text-gray-400 tracking-[0.2em]">Or register through</span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleGoogleSignIn}
+                                            disabled={isLoading}
+                                            className="w-full h-[54px] bg-white dark:bg-[#1e293b]/50 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-[#1e293b] text-gray-700 dark:text-white font-bold rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-lg dark:hover:shadow-[10px_0_20px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 group disabled:opacity-70"
+                                        >
+                                            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                                                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                            </svg>
+                                            <span>Continue with Google</span>
                                         </button>
 
                                         <div className="flex items-center justify-center text-sm pt-4 mt-6 border-t border-gray-200/50 dark:border-gray-700/50">

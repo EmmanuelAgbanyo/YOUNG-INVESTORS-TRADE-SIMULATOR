@@ -1,6 +1,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
+import { ref, onValue, get } from 'firebase/database';
+import { database } from '../firebase.ts';
 import type { Stock, ProfileState, ToastMessage, NewsHeadline, MarketSentiment, TradeOrder, ActiveOrder, OrderHistoryItem, OHLC, UserProfile, Team, AdminSettings, UnsettledCashItem, MarketEvent, MarketStatus, PerformanceHistoryEntry } from '../types.ts';
 import { TradeType, OrderType, OrderStatus } from '../types.ts';
 import {
@@ -213,71 +215,88 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
         }
     }, []);
 
+    // Initial fetch on mount
     useEffect(() => {
         fetchNews();
     }, [fetchNews]);
 
-    // LIVE DATA SYNC
-    const syncLiveData = useCallback(async () => {
-        try {
-            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
-            const res = await fetch(`${API_BASE_URL}/api/market/gse`);
-            if (!res.ok) throw new Error('Failed to fetch live data');
-            const liveStocks = await res.json();
+    // Auto-refresh news every 5 minutes so the feed feels truly live
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchNews();
+        }, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [fetchNews]);
 
-            setStocks(prev => {
-                // If initial load, prev is empty. Populate with all data.
-                if (prev.length === 0) {
-                    const initialStocks = STOCKS_DATA.map(baseStock => {
-                        const liveData = liveStocks.find((ls: any) => ls.symbol === baseStock.symbol);
-                        return {
-                            ...baseStock,
-                            price: liveData ? liveData.price : baseStock.price,
-                            lastPrice: liveData ? liveData.price : baseStock.price,
-                        };
-                    });
-                    return initialStocks;
-                }
-
-                // Otherwise, update prices as before
-                let updated = false;
-                const newStocks = prev.map(stock => {
-                    const liveData = liveStocks.find((ls: any) => ls.symbol === stock.symbol);
-                    if (liveData && liveData.price && Math.abs(liveData.price - stock.price) > 0.001) {
-                        updated = true;
-                        return {
-                            ...stock,
-                            lastPrice: stock.price,
-                            price: liveData.price,
-                            priceHistory: [...stock.priceHistory, { open: stock.price, high: Math.max(stock.price, liveData.price), low: Math.min(stock.price, liveData.price), close: liveData.price }].slice(-50)
-                        };
-                    }
-                    return stock;
-                });
-                return updated ? newStocks : prev;
-            });
-        } catch (e) {
-            console.error('Could not sync live GSE data:', e);
-            setStocks(STOCKS_DATA.map(s => ({ ...s, lastPrice: s.price })));
-            showToast('error', 'Could not fetch live market data. Displaying cached prices.');
+    // Re-fetch news whenever live market data arrives (new scraper cycle every 60s)
+    const [lastStocksUpdateTime, setLastStocksUpdateTime] = useState(0);
+    useEffect(() => {
+        if (stocks.length === 0) return;
+        const now = Date.now();
+        // Only trigger if it's been at least 60s since last re-fetch to avoid spam
+        if (now - lastStocksUpdateTime > 60000) {
+            setLastStocksUpdateTime(now);
+            // Stagger slightly so it doesn't hit at the exact same moment as scraper
+            const delay = setTimeout(() => fetchNews(), 3000);
+            return () => clearTimeout(delay);
         }
-    }, [showToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stocks]);
 
-    // Effect 2: Real-Time Data Engine
-    // This replaces the simulation engine to provide real-time prices.
+
+    // LIVE DATA SYNC - Firebase RTDB Listener
     useEffect(() => {
         if (marketStatus !== 'OPEN') return;
 
-        // Immediately sync data when market opens
-        syncLiveData();
+        // Immediately sync data when market opens using Firebase Listener
+        const marketRef = ref(database, 'market_data');
+        const unsubscribe = onValue(marketRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const liveDataMap = snapshot.val();
+                
+                setStocks(prev => {
+                    if (prev.length === 0) {
+                        return STOCKS_DATA.map(baseStock => {
+                            const liveData = liveDataMap[baseStock.symbol];
+                            return {
+                                ...baseStock,
+                                price: liveData ? liveData.price : baseStock.price,
+                                lastPrice: liveData ? liveData.price : baseStock.price,
+                            };
+                        });
+                    }
 
-        // Then, continue to sync data on a regular interval
-        const syncInterval = setInterval(syncLiveData, 30000); // Sync every 30 seconds
+                    let updated = false;
+                    const newStocks = prev.map(stock => {
+                        const liveData = liveDataMap[stock.symbol];
+                        if (liveData && liveData.price && Math.abs(liveData.price - stock.price) > 0.001) {
+                            updated = true;
+                            return {
+                                ...stock,
+                                lastPrice: stock.price,
+                                price: liveData.price,
+                                priceHistory: [...stock.priceHistory, { 
+                                    open: stock.price, 
+                                    high: Math.max(stock.price, liveData.price), 
+                                    low: Math.min(stock.price, liveData.price), 
+                                    close: liveData.price 
+                                }].slice(-50)
+                            };
+                        }
+                        return stock;
+                    });
+                    return updated ? newStocks : prev;
+                });
+            }
+        }, (error) => {
+            console.error('Firebase listen failed:', error);
+            showToast('error', 'Could not sync live market data from Firebase.');
+        });
 
         return () => {
-            clearInterval(syncInterval);
+            unsubscribe();
         };
-    }, [marketStatus, syncLiveData]);
+    }, [marketStatus, showToast]);
 
     useEffect(() => {
         setMarketStatus('OPEN');
@@ -572,6 +591,6 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
         activeMarketEvent,
         isLoaded,
         adminSettings,
-        syncLiveData,
+        syncLiveData: () => {}, // Kept for backwards compatibility but does nothing manually now
     };
 };
