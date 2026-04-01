@@ -643,6 +643,7 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
     const tabs: ('Dashboard' |'Traders' | 'Teams' | 'Academy' | 'Settings')[] = ['Dashboard', 'Traders', 'Teams', 'Academy', 'Settings'];
     return (<div className="space-y-6"><h2 className="text-3xl font-bold text-text-strong">Admin Control Center</h2><div className="flex items-center border-b border-base-300 overflow-x-auto">
         {tabs.map(tab => (<button key={tab} onClick={() => setActiveTab(tab)} className={`py-2 px-4 font-semibold text-sm transition-colors duration-200 border-b-2 shrink-0 ${activeTab === tab ? 'text-primary border-primary' : 'text-base-content/70 border-transparent hover:text-text-strong'}`}>{tab}</button>))}
+        </div>
         {isNuking && <NukingOverlay progress={resetProgress} currentTask={resetTask} />}
         <div key={activeTab} className="animate-fade-in">{renderContent()}</div>
         <ManageUserModal isOpen={isManageUserModalOpen} onClose={() => setIsManageUserModalOpen(false)} profileData={selectedUser} onResetProfile={handleResetProfile} onAdjustCash={handleAdjustCash} onRefresh={loadData} />
