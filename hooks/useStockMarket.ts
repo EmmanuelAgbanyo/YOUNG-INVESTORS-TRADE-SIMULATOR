@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
-import { ref, onValue, get } from 'firebase/database';
+import { ref, onValue, get, set } from 'firebase/database';
 import { database } from '../firebase.ts';
 import type { Stock, ProfileState, ToastMessage, NewsHeadline, MarketSentiment, TradeOrder, ActiveOrder, OrderHistoryItem, OHLC, UserProfile, Team, AdminSettings, UnsettledCashItem, MarketEvent, MarketStatus, PerformanceHistoryEntry } from '../types.ts';
 import { TradeType, OrderType, OrderStatus } from '../types.ts';
@@ -120,26 +120,94 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
 
     useEffect(() => {
         setIsLoaded(false);
-        if (profileIdToLoad) {
+        if (!profileIdToLoad) {
+            setProfileState(null);
+            setIsLoaded(true);
+            return;
+        }
+
+        const syncProfileData = async () => {
             try {
+                // 1. Try to fetch from Firebase first
+                const [portfolioSnap, holdingsSnap, ordersSnap, historySnap] = await Promise.all([
+                    get(ref(database, `portfolios/${profileIdToLoad}`)),
+                    get(ref(database, `holdings/${profileIdToLoad}`)),
+                    get(ref(database, `orders/${profileIdToLoad}`)),
+                    get(ref(database, `history/${profileIdToLoad}`))
+                ]);
+
+                if (portfolioSnap.exists()) {
+                    // Firebase has data - use it as source of truth
+                    const firebaseState: ProfileState = {
+                        portfolio: {
+                            cash: portfolioSnap.val().cash,
+                            unsettledCash: portfolioSnap.val().unsettledCash || [],
+                            holdings: holdingsSnap.exists() ? holdingsSnap.val() : {}
+                        },
+                        activeOrders: ordersSnap.exists() ? Object.values(ordersSnap.val()) : [],
+                        orderHistory: historySnap.exists() ? Object.values(historySnap.val()) : [],
+                        performanceHistory: portfolioSnap.val().performanceHistory || []
+                    };
+                    setProfileState(firebaseState);
+                } else {
+                    // 2. No Firebase data - Check LocalStorage for migration
+                    const savedStateJSON = localStorage.getItem(getProfileStateKey(profileIdToLoad));
+                    if (savedStateJSON) {
+                        const parsedState = JSON.parse(savedStateJSON);
+                        // Ensure required arrays exist
+                        if (!Array.isArray(parsedState.portfolio.unsettledCash)) parsedState.portfolio.unsettledCash = [];
+                        if (!Array.isArray(parsedState.performanceHistory)) parsedState.performanceHistory = [];
+                        setProfileState(parsedState);
+                        
+                        // Trigger an immediate migration to Firebase (Portfolio + Profile Info)
+                        await Promise.all([
+                            set(ref(database, `profiles/${profileIdToLoad}`), {
+                                user_id: activeProfile?.id || profileIdToLoad,
+                                name: activeProfile?.name || 'Anonymous Trader',
+                                email: activeProfile?.email || '',
+                                migratedAt: Date.now()
+                            }),
+                            set(ref(database, `portfolios/${profileIdToLoad}`), {
+                                cash: parsedState.portfolio.cash,
+                                unsettledCash: parsedState.portfolio.unsettledCash,
+                                performanceHistory: parsedState.performanceHistory,
+                                migratedFromLocal: true,
+                                updatedAt: Date.now()
+                            }),
+                            set(ref(database, `holdings/${profileIdToLoad}`), parsedState.portfolio.holdings),
+                            set(ref(database, `orders/${profileIdToLoad}`), parsedState.activeOrders),
+                            set(ref(database, `history/${profileIdToLoad}`), parsedState.orderHistory)
+                        ]);
+                    } else {
+                        // 3. New user - Initialize defaults in Firebase and State
+                        const initialState: ProfileState = {
+                            portfolio: { cash: adminSettings.startingCapital, unsettledCash: [], holdings: {} },
+                            activeOrders: [],
+                            orderHistory: [],
+                            performanceHistory: [],
+                        };
+                        setProfileState(initialState);
+                        
+                        await Promise.all([
+                            set(ref(database, `portfolios/${profileIdToLoad}`), {
+                                cash: adminSettings.startingCapital,
+                                unsettledCash: [],
+                                performanceHistory: [],
+                                createdAt: Date.now()
+                            }),
+                            set(ref(database, `holdings/${profileIdToLoad}`), {}),
+                            set(ref(database, `orders/${profileIdToLoad}`), {}),
+                            set(ref(database, `history/${profileIdToLoad}`), {})
+                        ]);
+                    }
+                }
+            } catch (e) {
+                console.error("Firebase sync error, falling back to LocalStorage:", e);
                 const savedStateJSON = localStorage.getItem(getProfileStateKey(profileIdToLoad));
                 if (savedStateJSON) {
-                    const parsedState = JSON.parse(savedStateJSON);
-                    if (!Array.isArray(parsedState.portfolio.unsettledCash)) {
-                        parsedState.portfolio.unsettledCash = [];
-                    }
-                    if (!Array.isArray(parsedState.performanceHistory)) {
-                        parsedState.performanceHistory = [];
-                    }
-                    // Ensure old orders have new properties
-                    if (Array.isArray(parsedState.activeOrders)) {
-                        parsedState.activeOrders.forEach((o: ActiveOrder) => {
-                            if (!o.status) o.status = OrderStatus.WORKING;
-                            if (!o.submittedAt) o.submittedAt = o.createdAt;
-                        });
-                    }
-                    setProfileState(parsedState);
+                    setProfileState(JSON.parse(savedStateJSON));
                 } else {
+                    // Critical Fallback: Initialize fresh state if both Firebase and Local fail
                     setProfileState({
                         portfolio: { cash: adminSettings.startingCapital, unsettledCash: [], holdings: {} },
                         activeOrders: [],
@@ -147,26 +215,41 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
                         performanceHistory: [],
                     });
                 }
-            } catch (e) {
-                console.error("Error loading profile state from localStorage", e);
-                setProfileState({
-                    portfolio: { cash: adminSettings.startingCapital, unsettledCash: [], holdings: {} },
-                    activeOrders: [],
-                    orderHistory: [],
-                    performanceHistory: [],
-                });
+            } finally {
+                setIsLoaded(true);
             }
-            setIsLoaded(true);
-        } else {
-            setProfileState(null);
-        }
+        };
+
+        syncProfileData();
     }, [profileIdToLoad, adminSettings.startingCapital]);
 
+    // Save changes to Firebase and LocalStorage
     useEffect(() => {
-        if (profileIdToLoad && profileState) {
+        if (profileIdToLoad && profileState && isLoaded) {
+            // Update LocalStorage for immediate feedback/offline
             localStorage.setItem(getProfileStateKey(profileIdToLoad), JSON.stringify(profileState));
+            
+            // Sync to Firebase in the background
+            const saveToFirebase = async () => {
+                try {
+                    await Promise.all([
+                        set(ref(database, `portfolios/${profileIdToLoad}`), {
+                            cash: profileState.portfolio.cash,
+                            unsettledCash: profileState.portfolio.unsettledCash,
+                            performanceHistory: profileState.performanceHistory || [],
+                            updatedAt: Date.now()
+                        }),
+                        set(ref(database, `holdings/${profileIdToLoad}`), profileState.portfolio.holdings),
+                        set(ref(database, `orders/${profileIdToLoad}`), profileState.activeOrders),
+                        set(ref(database, `history/${profileIdToLoad}`), profileState.orderHistory)
+                    ]);
+                } catch (e) {
+                    console.error("Failed to persist state to Firebase:", e);
+                }
+            };
+            saveToFirebase();
         }
-    }, [profileIdToLoad, profileState]);
+    }, [profileIdToLoad, profileState, isLoaded]);
 
 
     const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {

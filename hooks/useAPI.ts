@@ -15,7 +15,8 @@ import {
   child, 
   query, 
   orderByChild, 
-  equalTo
+  equalTo,
+  onValue
 } from 'firebase/database';
 
 class APIClient {
@@ -145,6 +146,127 @@ class APIClient {
       return [];
     } catch (err: any) {
       throw new Error(err.message || 'API request failed');
+    }
+  }
+
+  // Subscription helpers
+  subscribeProfiles(callback: (profiles: any[]) => void) {
+    const profilesRef = ref(database, 'profiles');
+    return onValue(profilesRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const profilesList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+      callback(profilesList);
+    });
+  }
+
+  subscribePortfolios(callback: (portfolios: any) => void) {
+    const portfoliosRef = ref(database, 'portfolios');
+    return onValue(portfoliosRef, (snapshot) => {
+      callback(snapshot.val() || {});
+    });
+  }
+
+  subscribeHoldings(callback: (holdings: any) => void) {
+    const holdingsRef = ref(database, 'holdings');
+    return onValue(holdingsRef, (snapshot) => {
+      callback(snapshot.val() || {});
+    });
+  }
+
+  subscribeHistory(callback: (history: any) => void) {
+    const historyRef = ref(database, 'history');
+    return onValue(historyRef, (snapshot) => {
+      callback(snapshot.val() || {});
+    });
+  }
+
+  async updateProfileStatus(id: string, isDisqualified: boolean) {
+    try {
+      const profileRef = ref(database, `profiles/${id}`);
+      await update(profileRef, { isDisqualified });
+      return true;
+    } catch (err) {
+      console.error("Update profile status failed:", err);
+      return false;
+    }
+  }
+
+  async getAllProfiles() {
+    try {
+      const snapshot = await get(ref(database, 'profiles'));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        return Object.keys(data).map(key => ({ id: key, ...data[key] }));
+      }
+      return [];
+    } catch (err: any) {
+      throw new Error(err.message || 'API request failed');
+    }
+  }
+
+  async getAllPortfolios() {
+    try {
+      const snapshot = await get(ref(database, 'portfolios'));
+      if (snapshot.exists()) {
+        return snapshot.val();
+      }
+      return {};
+    } catch (err: any) {
+      throw new Error(err.message || 'API request failed');
+    }
+  }
+
+  async getAllHistory() {
+    try {
+      const snapshot = await get(ref(database, 'history'));
+      return snapshot.val() || {};
+    } catch (err: any) {
+      return {};
+    }
+  }
+
+  async getAllHoldings() {
+    try {
+      const snapshot = await get(ref(database, 'holdings'));
+      return snapshot.val() || {};
+    } catch (err: any) {
+      return {};
+    }
+  }
+
+  async syncExternalProfile(id: string, data: any, state: any) {
+    try {
+      const profileRef = ref(database, `profiles/${id}`);
+      
+      // Update profile
+      await set(profileRef, {
+        user_id: id,
+        name: data.name,
+        email: data.email || '',
+        teamId: data.teamId || '',
+        isTeamLeader: data.isTeamLeader || false,
+        createdAt: data.createdAt || Date.now(),
+        syncedFromAdmin: true,
+        lastSyncedAt: Date.now()
+      });
+
+      // Update state if provided
+      if (state) {
+        await Promise.all([
+          set(ref(database, `portfolios/${id}`), {
+            cash: state.portfolio.cash,
+            unsettledCash: state.portfolio.unsettledCash || [],
+            performanceHistory: state.performanceHistory || [],
+            updatedAt: Date.now()
+          }),
+          set(ref(database, `holdings/${id}`), state.portfolio.holdings || {}),
+          set(ref(database, `history/${id}`), state.orderHistory || [])
+        ]);
+      }
+      return true;
+    } catch (err) {
+      console.error("Sync failed for", id, err);
+      return false;
     }
   }
 

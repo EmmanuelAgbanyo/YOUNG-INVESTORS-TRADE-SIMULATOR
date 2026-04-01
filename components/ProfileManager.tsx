@@ -2,6 +2,7 @@
 
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { UserProfile, Team, TeamInvite } from '../types.ts';
 import Button from './ui/Button.tsx';
 import ThemeSwitcher from './ui/ThemeSwitcher.tsx';
@@ -297,235 +298,260 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                         <div className="lg:hidden flex flex-col items-center text-center w-full max-w-md mb-6 animate-fade-in-up relative z-20">
                             <img src="/yin-logo.png" alt="Young Investors Network" className="h-[32px] sm:h-[40px] mb-3 drop-shadow-md" />
                             <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#1e40af] dark:text-[#60a5fa] drop-shadow-sm">Junior Investors League</h1>
-                        </div>
+                        </div>                        {/* Glassmorphic Premium Form Container */}
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, ease: "easeOut" }}
+                            className={`w-full max-w-[480px] bg-white/75 dark:bg-[#0f172a]/80 backdrop-blur-3xl border border-white/50 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-10 relative z-20 transition-all duration-500 ${shouldShake ? 'animate-shake' : ''}`}
+                        >
+                            <div className="relative min-h-[420px] sm:min-h-[530px] w-full flex flex-col">
+                                
+                                {/* Mobile Header (Visible only on small screens) */}
+                                <div className="lg:hidden flex items-center gap-3 mb-6">
+                                    <div className="bg-gradient-to-br from-[#1e40af] to-blue-600 text-white p-2.5 rounded-xl font-bold tracking-widest text-[10px] inline-flex items-center justify-center shadow-lg">
+                                        JIL
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-serif font-bold text-[#1e40af] dark:text-[#60a5fa] leading-tight">Junior Investors League</h2>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Global Trading Terminal</p>
+                                    </div>
+                                </div>
 
-                        {/* Glassmorphic Premium Form Container */}
-                        <div className={`w-full max-w-[480px] bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-2xl border border-white dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:shadow-[0_16px_48px_rgba(30,64,175,0.15)] dark:hover:shadow-[0_16px_48px_rgba(30,64,175,0.25)] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 relative z-20 transition-all duration-500 hover:-translate-y-1 ${shouldShake ? 'animate-shake' : ''}`}>
-                            <div className="relative min-h-[460px] sm:min-h-[530px] w-full">
-
-                                {/* --- Login Form --- */}
-                                <div
-                                    className={`absolute inset-0 flex flex-col justify-center transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${view === 'login' ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-full pointer-events-none'}`}
-                                >
-                                    <form onSubmit={handleLogin} className="space-y-6 w-full">
-                                        {/* Desktop Header */}
-                                        <div className="hidden lg:flex items-center gap-4 mb-8">
-                                            <div className="bg-gradient-to-br from-[#1e40af] to-blue-600 text-white p-3 rounded-2xl font-bold tracking-widest text-xs inline-flex items-center justify-center shadow-[0_8px_15px_rgba(30,64,175,0.3)]">
-                                                JIL
-                                            </div>
-                                            <div>
-                                                <h2 className="text-3xl font-serif font-bold text-[#1e40af] dark:text-[#60a5fa] drop-shadow-sm leading-tight">Junior Investors League</h2>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide">Enter your details to access the portal.</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="flex flex-col gap-1.5">
-                                                <label htmlFor="loginEmail" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Email or Username</label>
-                                                <input
-                                                    id="loginEmail"
-                                                    type="text"
-                                                    value={loginEmail}
-                                                    onChange={(e) => { setLoginEmail(e.target.value); setError(''); }}
-                                                    placeholder="you@email.com or YourUsername"
-                                                    className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[48px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1.5">
-                                                <div className="flex justify-between items-center">
-                                                    <label htmlFor="loginPassword" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Password</label>
-                                                    <span className="text-xs font-bold text-[#1e40af] dark:text-[#60a5fa] cursor-pointer hover:underline transition-colors">Forgot Password?</span>
+                                <AnimatePresence mode="wait">
+                                    {view === 'login' ? (
+                                        <motion.div
+                                            key="login"
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            transition={{ duration: 0.4, ease: "easeInOut" }}
+                                            className="w-full h-full flex flex-col justify-center"
+                                        >
+                                            <form onSubmit={handleLogin} className="space-y-6 w-full">
+                                                {/* Desktop Header */}
+                                                <div className="hidden lg:flex items-center gap-4 mb-8">
+                                                    <div className="bg-gradient-to-br from-[#1e40af] to-blue-600 text-white p-3 rounded-2xl font-bold tracking-widest text-xs inline-flex items-center justify-center shadow-[0_8px_15px_rgba(30,64,175,0.3)]">
+                                                        JIL
+                                                    </div>
+                                                    <div>
+                                                        <h2 className="text-3xl font-serif font-bold text-[#1e40af] dark:text-[#60a5fa] drop-shadow-sm leading-tight">Junior Investors League</h2>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide">Enter your details to access the portal.</p>
+                                                    </div>
                                                 </div>
-                                                <input
-                                                    id="loginPassword"
-                                                    type="password"
-                                                    value={loginPassword}
-                                                    onChange={(e) => { setLoginPassword(e.target.value); setError(''); }}
-                                                    placeholder="••••••••"
-                                                    className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[48px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-xl tracking-widest"
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-3 pl-1">
-                                                <input type="checkbox" id="remember" className="rounded-md border-gray-300 text-[#1e40af] focus:ring-[#1e40af] bg-white/50 dark:bg-gray-800 focus:ring-offset-0" />
-                                                <label htmlFor="remember" className="text-sm font-medium text-gray-600 dark:text-gray-400 cursor-pointer">Remember me for 30 days</label>
-                                            </div>
-                                        </div>
 
-                                        <div className="min-h-[20px] flex items-center">
-                                            {error && <p className="text-sm text-rose-500 dark:text-rose-400 font-bold animate-fade-in flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>{error}</p>}
-                                        </div>
+                                                <div className="space-y-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label htmlFor="loginEmail" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Email or Username</label>
+                                                        <input
+                                                            id="loginEmail"
+                                                            type="text"
+                                                            value={loginEmail}
+                                                            onChange={(e) => { setLoginEmail(e.target.value); setError(''); }}
+                                                            placeholder="you@email.com or YourUsername"
+                                                            className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[48px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <div className="flex justify-between items-center">
+                                                            <label htmlFor="loginPassword" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Password</label>
+                                                            <span className="text-xs font-bold text-[#1e40af] dark:text-[#60a5fa] cursor-pointer hover:underline transition-colors">Forgot Password?</span>
+                                                        </div>
+                                                        <input
+                                                            id="loginPassword"
+                                                            type="password"
+                                                            value={loginPassword}
+                                                            onChange={(e) => { setLoginPassword(e.target.value); setError(''); }}
+                                                            placeholder="••••••••"
+                                                            className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[48px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-xl tracking-widest"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-3 pl-1">
+                                                        <input type="checkbox" id="remember" className="rounded-md border-gray-300 text-[#1e40af] focus:ring-[#1e40af] bg-white/50 dark:bg-gray-800 focus:ring-offset-0" />
+                                                        <label htmlFor="remember" className="text-sm font-medium text-gray-600 dark:text-gray-400 cursor-pointer">Remember me for 30 days</label>
+                                                    </div>
+                                                </div>
 
-                                        <button
-                                            type="submit"
-                                            disabled={isLoading}
-                                            className="w-full h-[54px] text-lg font-bold text-white bg-gradient-to-r from-[#1e40af] to-blue-600 hover:from-blue-700 hover:to-blue-500 shadow-[0_8px_20px_rgba(30,64,175,0.3)] hover:shadow-[0_12px_25px_rgba(30,64,175,0.5)] transition-all duration-300 transform hover:scale-[1.02] rounded-xl flex items-center justify-center disabled:opacity-70 disabled:hover:scale-100"
+                                                <div className="min-h-[20px] flex items-center">
+                                                    {error && <p className="text-sm text-rose-500 dark:text-rose-400 font-bold animate-fade-in flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>{error}</p>}
+                                                </div>
+
+                                                <button
+                                                    type="submit"
+                                                    disabled={isLoading}
+                                                    className="w-full h-[54px] text-lg font-bold text-white bg-gradient-to-r from-[#1e40af] to-blue-600 hover:from-blue-700 hover:to-blue-500 shadow-[0_8px_20px_rgba(30,64,175,0.3)] hover:shadow-[0_12px_25px_rgba(30,64,175,0.5)] transition-all duration-300 transform hover:scale-[1.02] rounded-xl flex items-center justify-center disabled:opacity-70 disabled:hover:scale-100"
+                                                >
+                                                    {isLoading ? <span className="loading loading-spinner loading-md"></span> : 'Access Terminal'}
+                                                </button>
+
+                                                <div className="relative py-4">
+                                                    <div className="absolute inset-0 flex items-center">
+                                                        <div className="w-full border-t border-gray-200 dark:border-gray-700/50"></div>
+                                                    </div>
+                                                    <div className="relative flex justify-center text-xs uppercase">
+                                                        <span className="bg-white dark:bg-[#0a0f1e] px-4 font-black text-gray-500 dark:text-gray-400 tracking-[0.2em]">Or secure access via</span>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={handleGoogleSignIn}
+                                                    disabled={isLoading}
+                                                    className="w-full h-[54px] bg-white dark:bg-[#1e293b]/50 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-[#1e293b] text-gray-700 dark:text-white font-bold rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-lg dark:hover:shadow-[0_0_20px_rgba(30,64,175,0.2)] hover:-translate-y-0.5 group disabled:opacity-70"
+                                                >
+                                                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                                                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                                    </svg>
+                                                    <span>Continue with Google</span>
+                                                </button>
+
+                                                <div className="flex items-center justify-center text-sm pt-4 mt-8 border-t border-gray-200/50 dark:border-gray-700/50">
+                                                    <span className="text-gray-500 dark:text-gray-400 mr-2 font-medium">Don't have an account yet?</span>
+                                                    <button type="button" onClick={() => toggleView('signup')} className="font-bold text-[#1e40af] dark:text-[#60a5fa] hover:underline transition-colors drop-shadow-sm">
+                                                        Create an account
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div
+                                            key="signup"
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            transition={{ duration: 0.4, ease: "easeInOut" }}
+                                            className="w-full h-full flex flex-col justify-center"
                                         >
-                                            {isLoading ? <span className="loading loading-spinner loading-md"></span> : 'Access Terminal'}
-                                        </button>
+                                            <form onSubmit={handleSignUp} className="space-y-5 w-full">
+                                                {/* Desktop Header */}
+                                                <div className="hidden lg:flex items-center gap-4 mb-6">
+                                                    <div className="bg-gradient-to-br from-[#1e40af] to-emerald-600 text-white p-3 rounded-2xl font-bold tracking-widest text-xs inline-flex items-center justify-center shadow-[0_8px_15px_rgba(16,185,129,0.3)]">
+                                                        JIL
+                                                    </div>
+                                                    <div>
+                                                        <h2 className="text-3xl font-serif font-bold text-[#1e40af] dark:text-[#60a5fa] drop-shadow-sm leading-tight">Junior Investors League</h2>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide">Join the League and secure your spot.</p>
+                                                    </div>
+                                                </div>
 
-                                        <div className="relative py-4">
-                                            <div className="absolute inset-0 flex items-center">
-                                                <div className="w-full border-t border-gray-200 dark:border-gray-700/50"></div>
-                                            </div>
-                                            <div className="relative flex justify-center text-xs uppercase">
-                                                <span className="bg-white dark:bg-[#0a0f1e] px-4 font-black text-gray-500 dark:text-gray-400 tracking-[0.2em]">Or secure access via</span>
-                                            </div>
-                                        </div>
+                                                <div className="flex flex-col gap-1.5">
+                                                    <label htmlFor="signupName" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Display Name</label>
+                                                    <input
+                                                        id="signupName"
+                                                        type="text"
+                                                        value={signupName}
+                                                        onChange={(e) => { setSignupName(e.target.value); setError(''); }}
+                                                        placeholder="Your name / nickname"
+                                                        className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
+                                                        required
+                                                    />
+                                                </div>
 
-                                        <button
-                                            type="button"
-                                            onClick={handleGoogleSignIn}
-                                            disabled={isLoading}
-                                            className="w-full h-[54px] bg-white dark:bg-[#1e293b]/50 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-[#1e293b] text-gray-700 dark:text-white font-bold rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-lg dark:hover:shadow-[0_0_20px_rgba(30,64,175,0.2)] hover:-translate-y-0.5 group disabled:opacity-70"
-                                        >
-                                            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                                                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                                            </svg>
-                                            <span>Continue with Google</span>
-                                        </button>
+                                                <div className="flex flex-col gap-1.5">
+                                                    <label htmlFor="signupEmail" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Email or Username</label>
+                                                    <input
+                                                        id="signupEmail"
+                                                        type="text"
+                                                        value={signupEmail}
+                                                        onChange={(e) => { setSignupEmail(e.target.value); setError(''); }}
+                                                        placeholder="you@email.com or YourUsername"
+                                                        className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
+                                                        required
+                                                    />
+                                                </div>
 
-                                        <div className="flex items-center justify-center text-sm pt-4 mt-8 border-t border-gray-200/50 dark:border-gray-700/50">
-                                            <span className="text-gray-500 dark:text-gray-400 mr-2 font-medium">Don't have an account yet?</span>
-                                            <button type="button" onClick={() => toggleView('signup')} className="font-bold text-[#1e40af] dark:text-[#60a5fa] hover:underline transition-colors drop-shadow-sm">
-                                                Create an account
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label htmlFor="signupPassword" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Password</label>
+                                                        <input
+                                                            id="signupPassword"
+                                                            type="password"
+                                                            value={signupPassword}
+                                                            onChange={(e) => { setSignupPassword(e.target.value); setError(''); }}
+                                                            placeholder="Min. 6 chars"
+                                                            className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-xl tracking-widest"
+                                                            required
+                                                        />
+                                                    </div>
 
-                                {/* --- Signup Form --- */}
-                                <div
-                                    className={`absolute inset-0 flex flex-col justify-center transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${view === 'signup' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}`}
-                                >
-                                    <form onSubmit={handleSignUp} className="space-y-5 w-full">
-                                        {/* Desktop Header */}
-                                        <div className="hidden lg:flex items-center gap-4 mb-6">
-                                            <div className="bg-gradient-to-br from-[#1e40af] to-emerald-600 text-white p-3 rounded-2xl font-bold tracking-widest text-xs inline-flex items-center justify-center shadow-[0_8px_15px_rgba(16,185,129,0.3)]">
-                                                JIL
-                                            </div>
-                                            <div>
-                                                <h2 className="text-3xl font-serif font-bold text-[#1e40af] dark:text-[#60a5fa] drop-shadow-sm leading-tight">Junior Investors League</h2>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide">Join the League and secure your spot.</p>
-                                            </div>
-                                        </div>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label htmlFor="signupConfirmPassword" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Confirm</label>
+                                                        <input
+                                                            id="signupConfirmPassword"
+                                                            type="password"
+                                                            value={signupConfirmPassword}
+                                                            onChange={(e) => { setSignupConfirmPassword(e.target.value); setError(''); }}
+                                                            placeholder="Repeat password"
+                                                            className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-xl tracking-widest"
+                                                            required
+                                                        />
+                                                    </div>
+                                                </div>
 
-                                        <div className="flex flex-col gap-1.5">
-                                            <label htmlFor="signupName" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Display Name</label>
-                                            <input
-                                                id="signupName"
-                                                type="text"
-                                                value={signupName}
-                                                onChange={(e) => { setSignupName(e.target.value); setError(''); }}
-                                                placeholder="Your name / nickname"
-                                                className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
-                                                required
-                                            />
-                                        </div>
+                                                <div className="flex flex-col gap-1.5">
+                                                    <label htmlFor="inviteCode" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">School/Team Code</label>
+                                                    <input
+                                                        id="inviteCode"
+                                                        type="text"
+                                                        value={inviteCode}
+                                                        onChange={(e) => { setInviteCode(e.target.value); setError(''); }}
+                                                        placeholder="(Optional) Entry code"
+                                                        className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
+                                                    />
+                                                </div>
 
-                                        <div className="flex flex-col gap-1.5">
-                                            <label htmlFor="signupEmail" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Email or Username</label>
-                                            <input
-                                                id="signupEmail"
-                                                type="text"
-                                                value={signupEmail}
-                                                onChange={(e) => { setSignupEmail(e.target.value); setError(''); }}
-                                                placeholder="you@email.com or YourUsername"
-                                                className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
-                                                required
-                                            />
-                                        </div>
+                                                <div className="min-h-[20px] flex items-center">
+                                                    {error && <p className="text-sm text-rose-500 dark:text-rose-400 font-bold animate-fade-in flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>{error}</p>}
+                                                </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1.5">
-                                                <label htmlFor="signupPassword" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Password</label>
-                                                <input
-                                                    id="signupPassword"
-                                                    type="password"
-                                                    value={signupPassword}
-                                                    onChange={(e) => { setSignupPassword(e.target.value); setError(''); }}
-                                                    placeholder="Min. 6 chars"
-                                                    className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-xl tracking-widest"
-                                                    required
-                                                />
-                                            </div>
+                                                <button
+                                                    type="submit"
+                                                    disabled={isLoading}
+                                                    className="w-full h-[54px] text-lg font-bold text-white bg-gradient-to-r from-emerald-600 to-[#1e40af] hover:from-emerald-500 hover:to-blue-600 shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_25px_rgba(30,64,175,0.5)] transition-all duration-300 transform hover:scale-[1.02] rounded-xl flex items-center justify-center disabled:opacity-70 disabled:hover:scale-100"
+                                                >
+                                                    {isLoading ? <span className="loading loading-spinner loading-md"></span> : 'Create Profile'}
+                                                </button>
 
-                                            <div className="flex flex-col gap-1.5">
-                                                <label htmlFor="signupConfirmPassword" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">Confirm</label>
-                                                <input
-                                                    id="signupConfirmPassword"
-                                                    type="password"
-                                                    value={signupConfirmPassword}
-                                                    onChange={(e) => { setSignupConfirmPassword(e.target.value); setError(''); }}
-                                                    placeholder="Repeat password"
-                                                    className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-xl tracking-widest"
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
+                                                <div className="relative py-3">
+                                                    <div className="absolute inset-0 flex items-center">
+                                                        <div className="w-full border-t border-gray-200 dark:border-gray-700/50"></div>
+                                                    </div>
+                                                    <div className="relative flex justify-center text-xs uppercase">
+                                                        <span className="bg-white dark:bg-[#0a0f1e] px-4 font-black text-gray-500 dark:text-gray-400 tracking-[0.2em]">Or register through</span>
+                                                    </div>
+                                                </div>
 
-                                        <div className="flex flex-col gap-1.5">
-                                            <label htmlFor="inviteCode" className="text-xs font-black text-[#dc2626] dark:text-[#ef4444] uppercase tracking-wider">School/Team Code</label>
-                                            <input
-                                                id="inviteCode"
-                                                type="text"
-                                                value={inviteCode}
-                                                onChange={(e) => { setInviteCode(e.target.value); setError(''); }}
-                                                placeholder="(Optional) Entry code"
-                                                className="input input-bordered w-full bg-white/60 dark:bg-gray-900/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 focus:border-[#1e40af] overflow-hidden focus:bg-white dark:focus:bg-[#0f172a] focus:ring-2 focus:ring-[#1e40af] shadow-inner rounded-xl h-[44px] text-[#1e40af] dark:text-[#60a5fa] transition-all font-bold placeholder:font-medium text-lg"
-                                            />
-                                        </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleGoogleSignIn}
+                                                    disabled={isLoading}
+                                                    className="w-full h-[54px] bg-white dark:bg-[#1e293b]/50 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-[#1e293b] text-gray-700 dark:text-white font-bold rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-lg dark:hover:shadow-[10px_0_20px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 group disabled:opacity-70"
+                                                >
+                                                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                                                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                                    </svg>
+                                                    <span>Continue with Google</span>
+                                                </button>
 
-                                        <div className="min-h-[20px] flex items-center">
-                                            {error && <p className="text-sm text-rose-500 dark:text-rose-400 font-bold animate-fade-in flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>{error}</p>}
-                                        </div>
-
-                                        <button
-                                            type="submit"
-                                            disabled={isLoading}
-                                            className="w-full h-[54px] text-lg font-bold text-white bg-gradient-to-r from-emerald-600 to-[#1e40af] hover:from-emerald-500 hover:to-blue-600 shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_25px_rgba(30,64,175,0.5)] transition-all duration-300 transform hover:scale-[1.02] rounded-xl flex items-center justify-center disabled:opacity-70 disabled:hover:scale-100"
-                                        >
-                                            {isLoading ? <span className="loading loading-spinner loading-md"></span> : 'Create Profile'}
-                                        </button>
-
-                                        <div className="relative py-3">
-                                            <div className="absolute inset-0 flex items-center">
-                                                <div className="w-full border-t border-gray-200 dark:border-gray-700/50"></div>
-                                            </div>
-                                            <div className="relative flex justify-center text-xs uppercase">
-                                                <span className="bg-white dark:bg-[#0a0f1e] px-4 font-black text-gray-500 dark:text-gray-400 tracking-[0.2em]">Or register through</span>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={handleGoogleSignIn}
-                                            disabled={isLoading}
-                                            className="w-full h-[54px] bg-white dark:bg-[#1e293b]/50 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-[#1e293b] text-gray-700 dark:text-white font-bold rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-lg dark:hover:shadow-[10px_0_20px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 group disabled:opacity-70"
-                                        >
-                                            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                                                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                                            </svg>
-                                            <span>Continue with Google</span>
-                                        </button>
-
-                                        <div className="flex items-center justify-center text-sm pt-4 mt-6 border-t border-gray-200/50 dark:border-gray-700/50">
-                                            <span className="text-gray-500 dark:text-gray-400 mr-2 font-medium">Already registered?</span>
-                                            <button type="button" onClick={() => toggleView('login')} className="font-bold text-[#1e40af] dark:text-[#60a5fa] hover:underline transition-colors drop-shadow-sm">
-                                                Sign In
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-
+                                                <div className="flex items-center justify-center text-sm pt-4 mt-6 border-t border-gray-200/50 dark:border-gray-700/50">
+                                                    <span className="text-gray-500 dark:text-gray-400 mr-2 font-medium">Already registered?</span>
+                                                    <button type="button" onClick={() => toggleView('login')} className="font-bold text-[#1e40af] dark:text-[#60a5fa] hover:underline transition-colors drop-shadow-sm">
+                                                        Sign In
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* Premium Auth Footer */}
                         <div className="absolute bottom-4 sm:bottom-8 w-full flex flex-col items-center justify-center gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium z-20 px-6">

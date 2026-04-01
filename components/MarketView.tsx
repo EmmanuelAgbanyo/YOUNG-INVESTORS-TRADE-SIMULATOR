@@ -19,6 +19,7 @@ import TeamView from './TeamView.tsx';
 import AcademyView from './AcademyView.tsx';
 import MarketEventDisplay from './MarketEventDisplay.tsx';
 import TradeConfirmationModal from './TradeConfirmationModal.tsx';
+import Leaderboard from './Leaderboard.tsx';
 
 interface MarketViewProps {
   stocks: Stock[];
@@ -198,6 +199,9 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
                   stocks={stocks}
                   onTradeAction={handleSelectStockForTrade}
                 />
+                <div className="pt-4 animate-fade-in-up" style={{ animationDelay: '650ms' }}>
+                   <Leaderboard stocks={stocks} currentUserProfile={profile} />
+                </div>
               </div>
               <div className="space-y-4 sm:space-y-6 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
                 <MarketMovers stocks={stocks} />

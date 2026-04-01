@@ -206,7 +206,9 @@ const App: React.FC = () => {
     return <ProfileManager onProfileSelected={handleSetProfile} theme={theme} toggleTheme={toggleTheme} />;
   }
 
-  if (!stockMarket.profileState) return null; // Wait for profile state to load
+  if (!stockMarket.profileState) {
+    return <SplashScreen />;
+  }
 
   const isAdmin = activeProfile.name === 'Admin';
 

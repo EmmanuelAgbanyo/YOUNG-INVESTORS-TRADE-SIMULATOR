@@ -48,6 +48,7 @@ export interface UserProfile {
   password?: string;
   teamId?: string;
   isTeamLeader?: boolean;
+  isDisqualified?: boolean;
 }
 
 export interface Team {

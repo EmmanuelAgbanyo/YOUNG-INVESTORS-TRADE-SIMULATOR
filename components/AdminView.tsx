@@ -14,6 +14,8 @@ import { MARKET_EVENTS_TEMPLATES } from '../hooks/useStockMarket.ts';
 import { ACADEMY_MODULES } from '../academy-content.ts';
 import Button from './ui/Button.tsx';
 import ConfirmationModal from './ConfirmationModal.tsx';
+import Leaderboard from './Leaderboard.tsx';
+import { apiClient } from '../hooks/useAPI.ts';
 
 interface AdminViewProps {
     stocks: Stock[];
@@ -56,8 +58,19 @@ const ManageUserModal: React.FC<{
 }> = ({ isOpen, onClose, profileData, onResetProfile, onAdjustCash }) => {
     const [cashAmount, setCashAmount] = useState('');
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+    const [isSyncingStatus, setIsSyncingStatus] = useState(false);
 
     if (!isOpen || !profileData) return null;
+
+    const handleStatusToggle = async () => {
+        setIsSyncingStatus(true);
+        const newStatus = !profileData.profile.isDisqualified;
+        const res = await apiClient.updateProfileStatus(profileData.profile.id, newStatus);
+        if (res) {
+            profileData.profile.isDisqualified = newStatus;
+        }
+        setIsSyncingStatus(false);
+    };
 
     const handleAdjustCash = () => {
         const amount = parseFloat(cashAmount);
@@ -71,9 +84,29 @@ const ManageUserModal: React.FC<{
         <>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
                 <Card className="w-full max-w-md animate-fade-in-up" onClick={e => e.stopPropagation()}>
-                    <h2 className="text-xl font-bold text-text-strong mb-4">Manage Trader: {profileData.profile.name}</h2>
+                    <div className="flex justify-between items-start mb-4">
+                        <h2 className="text-xl font-bold text-text-strong">Manage Trader: {profileData.profile.name}</h2>
+                        {profileData.profile.isDisqualified && (
+                            <span className="px-2 py-0.5 bg-error/10 text-error text-[10px] font-bold rounded uppercase tracking-wider border border-error/20">Disqualified</span>
+                        )}
+                    </div>
                     
                     <div className="space-y-4">
+                        <div className="bg-base-200 p-3 rounded-lg border border-base-300 flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-semibold text-text-strong">Competition Status</p>
+                                <p className="text-[10px] text-base-content/60">{profileData.profile.isDisqualified ? 'Hidden from rankings' : 'Active participant'}</p>
+                            </div>
+                            <Button 
+                                size="sm" 
+                                variant={profileData.profile.isDisqualified ? "success" : "error"}
+                                onClick={handleStatusToggle}
+                                disabled={isSyncingStatus}
+                            >
+                                {isSyncingStatus ? <span className="loading loading-spinner loading-xs"></span> : (profileData.profile.isDisqualified ? 'Re-activate' : 'Disqualify')}
+                            </Button>
+                        </div>
+
                         <div>
                             <h3 className="font-semibold text-text-strong">Adjust Cash Balance</h3>
                             <div className="flex items-center space-x-2 mt-2">
@@ -177,6 +210,24 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; 
 
 const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, openMarketAdmin, closeMarketAdmin }) => {
     const [allProfilesData, setAllProfilesData] = useState<ProfileSummaryData[]>([]);
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleSyncAll = async (dataList: any[]) => {
+        setIsSyncing(true);
+        let successCount = 0;
+        try {
+            for (const data of dataList) {
+                const res = await apiClient.syncExternalProfile(data.profile.id, data.profile, data.state);
+                if (res) successCount++;
+            }
+            setToast({ type: 'success', text: `Successfully synced ${successCount} traders to the cloud!` });
+        } catch (err) {
+            console.error("Sync failed:", err);
+            setToast({ type: 'error', text: "Failed to sync traders. Check console for details." });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
     const [allTeams, setAllTeams] = useState<Team[]>([]);
     const [initialSettings, setInitialSettings] = useState<AdminSettings | null>(null);
     const [formSettings, setFormSettings] = useState<AdminSettings | null>(null);
@@ -233,6 +284,21 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
                 const pnl = portfolioValue - settings.startingCapital;
                 return { profile, state, portfolioValue, pnl };
             });
+
+            setAllProfilesData(profileData);
+
+            // SYNC TO FIREBASE: If Admin is viewing, ensure all known local profiles are in Firebase
+            const syncTradersToFirebase = async () => {
+                try {
+                    for (const data of profileData) {
+                        await apiClient.syncExternalProfile(data.profile.id, data.profile, data.state);
+                    }
+                } catch (err) {
+                    console.error("Admin background sync failed:", err);
+                }
+            };
+            syncTradersToFirebase();
+
             setAllProfilesData(profileData);
         } catch (e) { console.error("Failed to load admin data:", e); }
     }, [stockMap]);
@@ -373,17 +439,79 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
     );
     
     const renderTradersView = () => (
-        <Card className="!p-0"><h3 className="text-xl font-bold text-text-strong p-4">Trader Leaderboard</h3><div className="overflow-x-auto"><table className="table w-full"><thead><tr className="border-b border-t border-base-300"><th className="text-left bg-transparent text-base-content font-semibold p-4">Rank</th><th className="text-left bg-transparent text-base-content font-semibold p-4">Trader Name</th><th className="text-right bg-transparent text-base-content font-semibold p-4">Portfolio Value</th><th className="text-right bg-transparent text-base-content font-semibold p-4">Total P/L</th><th className="text-center bg-transparent text-base-content font-semibold p-4">Actions</th></tr></thead><tbody>
-{/* FIX: Explicitly type the 'data' parameter to resolve 'unknown' type error. */}
-        {sortedProfiles.map((data: ProfileSummaryData, index) => (<tr key={data.profile.id} className={`border-b border-base-300/50 last:border-b-0 ${index % 2 === 0 ? 'bg-base-200/30' : ''}`}><td className="p-4 font-bold text-text-strong text-lg">#{index + 1}</td><td className="p-4 font-semibold text-text-strong">{data.profile.name} {data.profile.teamId && `(${allTeams.find(t=>t.id===data.profile.teamId)?.name})`}</td><td className="p-4 text-right font-mono text-primary">{formatter.format(data.portfolioValue)}</td><td className={`p-4 text-right font-mono ${data.pnl >= 0 ? 'text-success' : 'text-error'}`}>{formatter.format(data.pnl)}</td><td className="p-4 text-center"><Button size="sm" variant="ghost" onClick={() => handleManageUser(data)}>Manage</Button></td></tr>))}
-        </tbody></table></div></Card>
+        <div className="space-y-6">
+            <Leaderboard stocks={stocks} isAdmin={true} />
+            <Card className="!p-0 overflow-hidden">
+                <div className="p-4 border-b border-base-300 bg-base-200/50 flex justify-between items-center">
+                    <div>
+                        <h3 className="text-xl font-bold text-text-strong">Trader Management</h3>
+                        <p className="text-sm text-base-content/70">Reset portfolios or adjust cash balances for individual traders.</p>
+                    </div>
+                    <Button 
+                        size="sm" 
+                        variant="primary" 
+                        onClick={() => handleSyncAll(allProfilesData)}
+                        disabled={isSyncing || allProfilesData.length === 0}
+                        className="flex items-center gap-2"
+                    >
+                        {isSyncing ? (
+                            <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        )}
+                        Sync All to Cloud
+                    </Button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="table w-full">
+                        <thead>
+                            <tr className="border-b border-base-300">
+                                <th className="text-left bg-transparent text-base-content font-semibold p-4">Trader Name</th>
+                                <th className="text-right bg-transparent text-base-content font-semibold p-4">Portfolio Value</th>
+                                <th className="text-center bg-transparent text-base-content font-semibold p-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sortedProfiles.map((data: ProfileSummaryData) => (
+                                <tr key={data.profile.id} className="border-b border-base-300/50 last:border-b-0 hover:bg-base-200/30 transition-colors">
+                                    <td className="p-4 font-semibold text-text-strong">
+                                        <div className="flex items-center gap-2">
+                                            {data.profile.name} {data.profile.teamId && `(${allTeams.find(t => t.id === data.profile.teamId)?.name})`}
+                                            {data.profile.isDisqualified && (
+                                                <span className="px-1.5 py-0.5 bg-error/10 text-error text-[8px] font-bold rounded uppercase tracking-tighter border border-error/20 shrink-0">DQ</span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-right font-mono text-primary">{formatter.format(data.portfolioValue)}</td>
+                                    <td className="p-4 text-center">
+                                        <Button size="sm" variant="ghost" onClick={() => handleManageUser(data)}>Manage</Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+        </div>
     );
 
     const renderTeamsView = () => {
-        const profileMap = new Map(allProfilesData.map(p => [p.profile.id, p]));
+        const profileMap = new Map<string, ProfileSummaryData>(allProfilesData.map(p => [p.profile.id, p]));
         return (<Card className="!p-0"><h3 className="text-xl font-bold text-text-strong p-4">Team Overview</h3><div className="overflow-x-auto"><table className="table w-full"><thead><tr className="border-b border-t border-base-300"><th className="text-left bg-transparent text-base-content font-semibold p-4">Team Name</th><th className="text-left bg-transparent text-base-content font-semibold p-4">Team Leader</th><th className="text-left bg-transparent text-base-content font-semibold p-4">Members</th><th className="text-right bg-transparent text-base-content font-semibold p-4">Team Portfolio Value</th></tr></thead><tbody>
-        {allTeams.map((team, index) => { const leaderData = profileMap.get(team.leaderId); const members = team.memberIds.map(id => profileMap.get(id)?.profile.name).filter(Boolean);
-        return (<tr key={team.id} className={`border-b border-base-300/50 last:border-b-0 ${index % 2 === 0 ? 'bg-base-200/30' : ''}`}><td className="p-4 font-bold text-text-strong">{team.name}</td><td className="p-4">{leaderData?.profile.name || 'N/A'}</td><td className="p-4">{members.join(', ')}</td><td className="p-4 text-right font-mono text-primary">{formatter.format(leaderData?.portfolioValue || 0)}</td></tr>)})}
+        {allTeams.map((team, index) => { 
+            const leaderData = profileMap.get(team.leaderId); 
+            const members = team.memberIds.map(id => profileMap.get(id)?.profile.name).filter(Boolean);
+            return (
+                <tr key={team.id} className={`border-b border-base-300/50 last:border-b-0 ${index % 2 === 0 ? 'bg-base-200/30' : ''}`}>
+                    <td className="p-4 font-bold text-text-strong">{team.name}</td>
+                    <td className="p-4">{leaderData?.profile.name || 'N/A'}</td>
+                    <td className="p-4">{members.join(', ')}</td>
+                    <td className="p-4 text-right font-mono text-primary">{formatter.format(leaderData?.portfolioValue || 0)}</td>
+                </tr>
+            );
+        })}
         </tbody></table></div></Card>);
     };
 
