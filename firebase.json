@@ -1,7 +1,10 @@
 {
   "auth": {
     "providers": {
-      "emailPassword": true
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Young Investors Trade Simulator",
+        "supportEmail": "emmanuelagbanyo8@gmail.com"
+      }
     }
   },
   "database": {
