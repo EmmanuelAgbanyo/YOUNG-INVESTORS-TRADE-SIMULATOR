@@ -11,6 +11,8 @@ import {
   ref, 
   get, 
   set, 
+  update,
+  remove,
   push, 
   child, 
   query, 
@@ -245,6 +247,7 @@ class APIClient {
         email: data.email || '',
         teamId: data.teamId || '',
         isTeamLeader: data.isTeamLeader || false,
+        isDisqualified: data.isDisqualified || false,
         createdAt: data.createdAt || Date.now(),
         syncedFromAdmin: true,
         lastSyncedAt: Date.now()
@@ -267,6 +270,28 @@ class APIClient {
     } catch (err) {
       console.error("Sync failed for", id, err);
       return false;
+    }
+  }
+
+  async resetAllSimulationData() {
+    try {
+      const nodesToDelete = [
+        'profiles',
+        'portfolios',
+        'holdings',
+        'history',
+        'teams',
+        'team_invites',
+        'team_members',
+        'orders'
+      ];
+      
+      const deletions = nodesToDelete.map(node => remove(ref(database, node)));
+      await Promise.all(deletions);
+      return true;
+    } catch (err) {
+      console.error("Full reset failed:", err);
+      throw err;
     }
   }
 

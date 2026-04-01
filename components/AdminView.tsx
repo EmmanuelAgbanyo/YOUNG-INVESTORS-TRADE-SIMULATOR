@@ -55,7 +55,8 @@ const ManageUserModal: React.FC<{
     profileData: ProfileSummaryData | null;
     onResetProfile: (profileId: string) => void;
     onAdjustCash: (profileId: string, amount: number) => void;
-}> = ({ isOpen, onClose, profileData, onResetProfile, onAdjustCash }) => {
+    onRefresh: () => void;
+}> = ({ isOpen, onClose, profileData, onResetProfile, onAdjustCash, onRefresh }) => {
     const [cashAmount, setCashAmount] = useState('');
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [isSyncingStatus, setIsSyncingStatus] = useState(false);
@@ -63,11 +64,12 @@ const ManageUserModal: React.FC<{
     if (!isOpen || !profileData) return null;
 
     const handleStatusToggle = async () => {
+        if (!profileData) return;
         setIsSyncingStatus(true);
         const newStatus = !profileData.profile.isDisqualified;
         const res = await apiClient.updateProfileStatus(profileData.profile.id, newStatus);
         if (res) {
-            profileData.profile.isDisqualified = newStatus;
+            onRefresh();
         }
         setIsSyncingStatus(false);
     };
@@ -203,6 +205,33 @@ const BigMarketClock: React.FC<{ status: MarketStatus }> = ({ status }) => {
     );
 };
 
+const NukingOverlay: React.FC<{ progress: number; currentTask: string }> = ({ progress, currentTask }) => (
+    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+        <div className="w-24 h-24 mb-8 relative">
+            <div className="absolute inset-0 border-4 border-error/20 rounded-full"></div>
+            <div 
+                className="absolute inset-0 border-4 border-error rounded-full transition-all duration-500 ease-out"
+                style={{ clipPath: `polygon(50% 50%, -50% -50%, ${progress > 25 ? '150% -50%' : (progress * 4) + '% -50%'}, ${progress > 50 ? '150% 150%' : ((progress-25) * 4) + '% 150%'}, ${progress > 75 ? '-50% 150%' : ((progress-50) * 4) + '% 150%'}, -50% -50%)`, transform: 'rotate(45deg)' }}
+            ></div>
+            <div className="absolute inset-4 bg-error/10 rounded-full flex items-center justify-center animate-pulse">
+                <svg className="w-8 h-8 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </div>
+        </div>
+        <h2 className="text-3xl font-black text-error mb-2 tracking-tighter italic">NEUTRALIZING SIMULATION</h2>
+        <div className="w-full max-w-xs bg-white/10 h-1 rounded-full mb-4 overflow-hidden">
+            <div className="h-full bg-error transition-all duration-300" style={{ width: `${progress}%` }}></div>
+        </div>
+        <p className="text-error/60 font-mono text-xs uppercase tracking-[0.3em] h-4">{currentTask}</p>
+        <div className="mt-12 flex space-x-2">
+            {[...Array(3)].map((_, i) => (
+                <div key={i} className="w-1.5 h-1.5 bg-error rounded-full animate-bounce" style={{ animationDelay: `${i * 0.1}s` }}></div>
+            ))}
+        </div>
+    </div>
+);
+
 
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; }> = ({ icon, label, value }) => (
     <Card><div className="flex items-center space-x-4"><div className="p-3 bg-base-300 rounded-lg">{icon}</div><div><div className="text-sm text-base-content/70">{label}</div><div className="text-2xl font-bold text-text-strong">{value}</div></div></div></Card>
@@ -235,6 +264,9 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isCloseMarketConfirmOpen, setIsCloseMarketConfirmOpen] = useState(false);
     const [resetConfirmationText, setResetConfirmationText] = useState('');
+    const [resetProgress, setResetProgress] = useState(0);
+    const [resetTask, setResetTask] = useState('');
+    const [isNuking, setIsNuking] = useState(false);
     const [activeTab, setActiveTab] = useState<'Dashboard' |'Traders' | 'Teams' | 'Settings' | 'Academy'>('Dashboard');
     const [broadcastMessage, setBroadcastMessage] = useState('');
     const [manualEvent, setManualEvent] = useState('');
@@ -318,11 +350,42 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
         setToast({ type: 'success', text: `Academy video links have been updated.` });
     }, [videoLinks, setToast]);
 
-    const handleResetAllData = useCallback(() => {
-        Object.keys(localStorage).forEach(key => { if (key.startsWith('yin_trade_')) localStorage.removeItem(key); });
-        setIsResetModalOpen(false); setResetConfirmationText('');
-        setToast({ type: 'success', text: 'All trader data has been reset!'});
-        loadData();
+    const handleResetAllData = useCallback(async () => {
+        setIsNuking(true);
+        setResetProgress(10);
+        setResetTask('Authorization Confirmed...');
+        
+        try {
+            await new Promise(r => setTimeout(r, 800));
+            setResetProgress(30);
+            setResetTask('Wiping Cloud Infrastructure...');
+            await apiClient.resetAllSimulationData();
+            
+            await new Promise(r => setTimeout(r, 800));
+            setResetProgress(60);
+            setResetTask('Purging Local Secondary Storage...');
+            Object.keys(localStorage).forEach(key => { if (key.startsWith('yin_trade_')) localStorage.removeItem(key); });
+            
+            await new Promise(r => setTimeout(r, 800));
+            setResetProgress(90);
+            setResetTask('Synchronizing Session States...');
+            
+            await new Promise(r => setTimeout(r, 500));
+            setResetProgress(100);
+            setResetTask('Systems Neutralized.');
+            
+            await new Promise(r => setTimeout(r, 1000));
+            setIsResetModalOpen(false); 
+            setResetConfirmationText('');
+            setToast({ type: 'success', text: 'Full simulation reset complete. All data purged.' });
+            loadData();
+        } catch (err) {
+            console.error("Reset failed:", err);
+            setToast({ type: 'error', text: 'System reset failed. Please check console.' });
+        } finally {
+            setIsNuking(false);
+            setResetProgress(0);
+        }
     }, [setToast, loadData]);
 
     const handleBroadcast = useCallback(() => {
@@ -580,8 +643,9 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
     const tabs: ('Dashboard' |'Traders' | 'Teams' | 'Academy' | 'Settings')[] = ['Dashboard', 'Traders', 'Teams', 'Academy', 'Settings'];
     return (<div className="space-y-6"><h2 className="text-3xl font-bold text-text-strong">Admin Control Center</h2><div className="flex items-center border-b border-base-300 overflow-x-auto">
         {tabs.map(tab => (<button key={tab} onClick={() => setActiveTab(tab)} className={`py-2 px-4 font-semibold text-sm transition-colors duration-200 border-b-2 shrink-0 ${activeTab === tab ? 'text-primary border-primary' : 'text-base-content/70 border-transparent hover:text-text-strong'}`}>{tab}</button>))}
-        </div><div key={activeTab} className="animate-fade-in">{renderContent()}</div>
-        <ManageUserModal isOpen={isManageUserModalOpen} onClose={() => setIsManageUserModalOpen(false)} profileData={selectedUser} onResetProfile={handleResetProfile} onAdjustCash={handleAdjustCash} />
+        {isNuking && <NukingOverlay progress={resetProgress} currentTask={resetTask} />}
+        <div key={activeTab} className="animate-fade-in">{renderContent()}</div>
+        <ManageUserModal isOpen={isManageUserModalOpen} onClose={() => setIsManageUserModalOpen(false)} profileData={selectedUser} onResetProfile={handleResetProfile} onAdjustCash={handleAdjustCash} onRefresh={loadData} />
         <ConfirmationModal
                 isOpen={isCloseMarketConfirmOpen}
                 onClose={() => setIsCloseMarketConfirmOpen(false)}

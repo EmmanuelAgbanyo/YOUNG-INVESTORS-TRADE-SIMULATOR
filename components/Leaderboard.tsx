@@ -218,7 +218,18 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
                                             {isAdmin && (
                                                 <td className="px-6 py-4 text-center">
                                                     <button 
-                                                        onClick={() => apiClient.updateProfileStatus(trader.profileId, !trader.isDisqualified)}
+                                                        onClick={async (e) => {
+                                                            const btn = e.currentTarget;
+                                                            btn.disabled = true;
+                                                            const originalContent = btn.innerHTML;
+                                                            btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
+                                                            try {
+                                                                await apiClient.updateProfileStatus(trader.profileId, !trader.isDisqualified);
+                                                            } finally {
+                                                                btn.disabled = false;
+                                                                btn.innerHTML = originalContent;
+                                                            }
+                                                        }}
                                                         className={`p-2 rounded-lg transition-colors ${
                                                             trader.isDisqualified 
                                                             ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' 
