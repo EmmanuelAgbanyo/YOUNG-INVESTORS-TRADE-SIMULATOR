@@ -277,20 +277,26 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
     const formatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' });
     const stockMap = useMemo(() => new Map(stocks.map(s => [s.symbol, s.price])), [stocks]);
 
-    const loadData = useCallback(() => {
+    const loadData = useCallback(async () => {
         try {
-            const profiles: UserProfile[] = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
-            const teams: Team[] = JSON.parse(localStorage.getItem('yin_trade_teams') || '[]');
-            const settingsJSON = localStorage.getItem('yin_trade_admin_settings');
-             
-            const settings: AdminSettings = settingsJSON ? {
-                startingCapital: DEFAULT_STARTING_CAPITAL, interestRate: DEFAULT_INTEREST_RATE, commissionFee: DEFAULT_COMMISSION_FEE, ...JSON.parse(settingsJSON)
-            } : {
+            const [profiles, portfolios, allHistory, holdings, settingsCloud] = await Promise.all([
+                apiClient.getAllProfiles(),
+                apiClient.getAllPortfolios(),
+                apiClient.getAllHistory(),
+                apiClient.getAllHoldings(),
+                new Promise<AdminSettings | null>((resolve) => {
+                    apiClient.subscribeAdminSettings((s) => resolve(s));
+                })
+            ]);
+
+            const settings: AdminSettings = settingsCloud || {
                 startingCapital: DEFAULT_STARTING_CAPITAL, settlementCycle: 'T+2', baseDrift: DEFAULT_ANNUAL_DRIFT, baseVolatility: DEFAULT_ANNUAL_VOLATILITY, eventFrequency: DEFAULT_EVENT_CHANCE_PER_TICK,
                 marketDurationMinutes: DEFAULT_MARKET_DURATION_MINUTES, circuitBreakerEnabled: DEFAULT_CIRCUIT_BREAKER_ENABLED, circuitBreakerThreshold: DEFAULT_CIRCUIT_BREAKER_THRESHOLD,
                 circuitBreakerHaltSeconds: DEFAULT_CIRCUIT_BREAKER_HALT_SECONDS, simulationSpeed: DEFAULT_SIMULATION_SPEED, interestRate: DEFAULT_INTEREST_RATE, commissionFee: DEFAULT_COMMISSION_FEE,
             };
-            setInitialSettings(settings); setFormSettings(settings); setAllTeams(teams);
+
+            setInitialSettings(settings); 
+            setFormSettings(settings);
 
             const storedVideos = localStorage.getItem('yin_trade_academy_videos');
             if (storedVideos) {
@@ -298,41 +304,33 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
             }
 
             const profileData = profiles.filter(p => p.name !== 'Admin').map(profile => {
-                const leaderId = profile.isTeamLeader ? profile.id : teams.find(t => t.id === profile.teamId)?.leaderId;
-                const stateKeyId = leaderId || profile.id;
-                const stateJSON = localStorage.getItem(`yin_trade_profile_${stateKeyId}`);
-                const state: ProfileState | null = stateJSON ? JSON.parse(stateJSON) : null;
+                const id = profile.id;
+                const portfolio = portfolios[id] || { cash: settings.startingCapital };
+                const userHoldings = holdings[id] || {};
+                const userHistory = allHistory[id] || [];
                 
-                let holdingsValue = 0, totalCostBasis = 0;
-                if (state) {
-                    Object.values(state.portfolio.holdings).forEach(h => {
-                        const price = stockMap.get(h.symbol) || 0;
-                        holdingsValue += h.quantity * price;
-                        totalCostBasis += h.quantity * h.avgCost;
-                    });
-                }
-                const totalUnsettledCash = state?.portfolio.unsettledCash.reduce((sum, item) => sum + item.amount, 0) ?? 0;
-                const portfolioValue = (state?.portfolio.cash ?? settings.startingCapital) + totalUnsettledCash + holdingsValue;
+                let holdingsValue = 0;
+                Object.entries(userHoldings).forEach(([symbol, h]: [string, any]) => {
+                    const price = stockMap.get(symbol) || 0;
+                    holdingsValue += (h.quantity || 0) * price;
+                });
+
+                const totalUnsettledCash = (portfolio.unsettledCash || []).reduce((sum: number, item: any) => sum + item.amount, 0);
+                const portfolioValue = (portfolio.cash ?? settings.startingCapital) + totalUnsettledCash + holdingsValue;
                 const pnl = portfolioValue - settings.startingCapital;
-                return { profile, state, portfolioValue, pnl };
+                
+                return { 
+                    profile, 
+                    state: { portfolio: { ...portfolio, holdings: userHoldings }, orderHistory: userHistory } as any, 
+                    portfolioValue, 
+                    pnl 
+                };
             });
 
             setAllProfilesData(profileData);
-
-            // SYNC TO FIREBASE: If Admin is viewing, ensure all known local profiles are in Firebase
-            const syncTradersToFirebase = async () => {
-                try {
-                    for (const data of profileData) {
-                        await apiClient.syncExternalProfile(data.profile.id, data.profile, data.state);
-                    }
-                } catch (err) {
-                    console.error("Admin background sync failed:", err);
-                }
-            };
-            syncTradersToFirebase();
-
-            setAllProfilesData(profileData);
-        } catch (e) { console.error("Failed to load admin data:", e); }
+        } catch (e) { 
+            console.error("Failed to load admin data from cloud:", e); 
+        }
     }, [stockMap]);
     
     useEffect(() => { loadData(); }, [loadData]);
@@ -366,7 +364,15 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
             await new Promise(r => setTimeout(r, 800));
             setResetProgress(60);
             setResetTask('Purging Local Secondary Storage...');
-            Object.keys(localStorage).forEach(key => { if (key.startsWith('yin_trade_')) localStorage.removeItem(key); });
+            Object.keys(localStorage).forEach(key => { 
+                if (key.includes('yin_trade_')) {
+                    localStorage.removeItem(key);
+                }
+            });
+            // Also clear profiles/teams explicitly
+            localStorage.removeItem('yin_trade_profiles');
+            localStorage.removeItem('yin_trade_teams');
+            localStorage.removeItem('yin_trade_admin_settings');
             
             await new Promise(r => setTimeout(r, 800));
             setResetProgress(90);
