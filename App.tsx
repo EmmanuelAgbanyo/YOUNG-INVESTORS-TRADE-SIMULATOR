@@ -16,6 +16,7 @@ import TeamInviteModal from './components/TeamInviteModal.tsx';
 import Footer from './components/Footer.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
 import ChatbotWidget from './components/ChatbotWidget.tsx';
+import { apiClient } from './hooks/useAPI.ts';
 
 // A simple simulation of password hashing for this browser-only environment.
 const hashPassword = (password: string): string => btoa(password);
@@ -248,8 +249,8 @@ const App: React.FC = () => {
             isAdmin={isAdmin}
             setToast={setToast}
             adminSettings={stockMarket.adminSettings}
-            openMarketAdmin={() => { }} // Implemented elsewhere or passed down
-            closeMarketAdmin={() => { }} // Implemented elsewhere or passed down
+            openMarketAdmin={() => stockMarket.marketStatus !== 'OPEN' && apiClient.updateMarketStatus('OPEN')}
+            closeMarketAdmin={() => stockMarket.marketStatus === 'OPEN' && apiClient.updateMarketStatus('CLOSED')}
           />
         </main>
         {toast && <Toast message={toast} onClose={() => setToast(null)} />}

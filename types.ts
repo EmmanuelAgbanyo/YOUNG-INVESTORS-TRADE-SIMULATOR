@@ -44,6 +44,7 @@ export interface ToastMessage {
 export interface UserProfile {
   id: string;
   name: string;
+  email?: string;
   createdAt: number;
   password?: string;
   teamId?: string;

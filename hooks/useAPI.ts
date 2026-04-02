@@ -182,6 +182,13 @@ class APIClient {
     });
   }
 
+  subscribeOrders(callback: (orders: any) => void) {
+    const ordersRef = ref(database, 'orders');
+    return onValue(ordersRef, (snapshot) => {
+      callback(snapshot.val() || {});
+    });
+  }
+
   async updateProfileStatus(id: string, isDisqualified: boolean) {
     try {
       const profileRef = ref(database, `profiles/${id}`);
@@ -189,6 +196,41 @@ class APIClient {
       return true;
     } catch (err) {
       console.error("Update profile status failed:", err);
+      return false;
+    }
+  }
+
+  // Market Status & Admin Settings Sync
+  subscribeMarketStatus(callback: (status: MarketStatus) => void) {
+    const statusRef = ref(database, 'market_status');
+    return onValue(statusRef, (snapshot) => {
+      callback(snapshot.val() || 'CLOSED');
+    });
+  }
+
+  async updateMarketStatus(status: MarketStatus) {
+    try {
+      await set(ref(database, 'market_status'), status);
+      return true;
+    } catch (err) {
+      console.error("Update market status failed:", err);
+      return false;
+    }
+  }
+
+  subscribeAdminSettings(callback: (settings: AdminSettings) => void) {
+    const settingsRef = ref(database, 'admin_settings');
+    return onValue(settingsRef, (snapshot) => {
+      callback(snapshot.val());
+    });
+  }
+
+  async updateAdminSettings(settings: AdminSettings) {
+    try {
+      await set(ref(database, 'admin_settings'), settings);
+      return true;
+    } catch (err) {
+      console.error("Update admin settings failed:", err);
       return false;
     }
   }
@@ -292,6 +334,24 @@ class APIClient {
     } catch (err) {
       console.error("Full reset failed:", err);
       throw err;
+    }
+  }
+
+  async resetProfileData(profileId: string) {
+    try {
+      const nodesToDelete = [
+        `portfolios/${profileId}`,
+        `holdings/${profileId}`,
+        `history/${profileId}`,
+        `orders/${profileId}`
+      ];
+      
+      const deletions = nodesToDelete.map(node => remove(ref(database, node)));
+      await Promise.all(deletions);
+      return true;
+    } catch (err) {
+      console.error("Profile reset failed:", err);
+      return false;
     }
   }
 

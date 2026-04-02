@@ -351,6 +351,8 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
     }, [videoLinks, setToast]);
 
     const handleResetAllData = useCallback(async () => {
+        setIsResetModalOpen(false); // Close modal immediately to show overlay
+        setResetConfirmationText('');
         setIsNuking(true);
         setResetProgress(10);
         setResetTask('Authorization Confirmed...');
@@ -375,8 +377,6 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
             setResetTask('Systems Neutralized.');
             
             await new Promise(r => setTimeout(r, 1000));
-            setIsResetModalOpen(false); 
-            setResetConfirmationText('');
             setToast({ type: 'success', text: 'Full simulation reset complete. All data purged.' });
             loadData();
         } catch (err) {
@@ -404,13 +404,24 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
     
     const handleManageUser = (profileData: ProfileSummaryData) => { setSelectedUser(profileData); setIsManageUserModalOpen(true); };
 
-    const handleResetProfile = useCallback((profileId: string) => {
+    const handleResetProfile = useCallback(async (profileId: string) => {
         const profileData = allProfilesData.find(p => p.profile.id === profileId);
         if (!profileData) return;
-        const key = `yin_trade_profile_${profileData.profile.teamId ? allTeams.find(t=>t.id === profileData.profile.teamId)?.leaderId : profileId}`;
-        localStorage.removeItem(key);
-        setToast({ type: 'success', text: `Portfolio for ${profileData.profile.name} has been reset.` });
-        loadData();
+        
+        try {
+            // 1. Purge Cloud Data
+            await apiClient.resetProfileData(profileId);
+            
+            // 2. Remove Local Backup
+            const key = `yin_trade_profile_${profileData.profile.teamId ? allTeams.find(t=>t.id === profileData.profile.teamId)?.leaderId : profileId}`;
+            localStorage.removeItem(key);
+            
+            setToast({ type: 'success', text: `Portfolio for ${profileData.profile.name} has been reset in the cloud and locally.` });
+            loadData();
+        } catch (err) {
+            console.error("Profile reset failed:", err);
+            setToast({ type: 'error', text: `Failed to reset ${profileData.profile.name}.` });
+        }
     }, [allProfilesData, allTeams, setToast, loadData]);
 
     const handleAdjustCash = useCallback((profileId: string, amount: number) => {

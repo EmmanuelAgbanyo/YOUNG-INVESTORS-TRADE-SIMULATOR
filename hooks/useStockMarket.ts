@@ -1,8 +1,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
-import { ref, onValue, get, set } from 'firebase/database';
+import { ref, onValue, get, set, update } from 'firebase/database';
 import { database } from '../firebase.ts';
+import { apiClient } from './useAPI.ts';
 import type { Stock, ProfileState, ToastMessage, NewsHeadline, MarketSentiment, TradeOrder, ActiveOrder, OrderHistoryItem, OHLC, UserProfile, Team, AdminSettings, UnsettledCashItem, MarketEvent, MarketStatus, PerformanceHistoryEntry } from '../types.ts';
 import { TradeType, OrderType, OrderStatus } from '../types.ts';
 import {
@@ -66,18 +67,17 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     const [news, setNews] = useState<NewsHeadline[]>([]);
     const [isNewsLoading, setIsNewsLoading] = useState(false);
     const [marketSentiment, setMarketSentiment] = useState<MarketSentiment>('Neutral');
-    const [marketStatus, setMarketStatus] = useState<MarketStatus>('OPEN');
+    const [marketStatus, setMarketStatus] = useState<MarketStatus>('CLOSED');
     const [activeMarketEvent, setActiveMarketEvent] = useState<MarketEvent | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [marketOpenIndexPrice, setMarketOpenIndexPrice] = useState(0);
     const [circuitBreakerTriggered, setCircuitBreakerTriggered] = useState(false);
 
-    const adminSettings: AdminSettings = useMemo(() => {
+    const [adminSettings, setAdminSettings] = useState<AdminSettings>(() => {
         try {
             const settingsJSON = localStorage.getItem('yin_trade_admin_settings');
             if (settingsJSON) {
                 const parsed = JSON.parse(settingsJSON);
-                // Add defaults for new settings if they don't exist
                 return {
                     startingCapital: DEFAULT_STARTING_CAPITAL,
                     interestRate: DEFAULT_INTEREST_RATE,
@@ -85,7 +85,7 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
                     ...parsed,
                 };
             }
-        } catch (e) { console.error("Could not parse admin settings", e); }
+        } catch (e) { console.error("Could not parse local admin settings", e); }
         return {
             startingCapital: DEFAULT_STARTING_CAPITAL,
             settlementCycle: 'T+2',
@@ -99,6 +99,25 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
             simulationSpeed: DEFAULT_SIMULATION_SPEED,
             interestRate: DEFAULT_INTEREST_RATE,
             commissionFee: DEFAULT_COMMISSION_FEE,
+        };
+    });
+
+    // Firebase Subscriptions for Global State
+    useEffect(() => {
+        const unsubStatus = apiClient.subscribeMarketStatus((status) => {
+            setMarketStatus(status);
+        });
+        const unsubSettings = apiClient.subscribeAdminSettings((settings) => {
+            if (settings) {
+                setAdminSettings(settings);
+                // Also cache locally for offline/initial load
+                localStorage.setItem('yin_trade_admin_settings', JSON.stringify(settings));
+            }
+        });
+
+        return () => {
+            unsubStatus();
+            unsubSettings();
         };
     }, []);
 
@@ -382,11 +401,10 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     }, [marketStatus, showToast]);
 
     useEffect(() => {
-        setMarketStatus('OPEN');
         const initialIndex = STOCKS_DATA.reduce((sum, s) => sum + s.price, 0) / STOCKS_DATA.length;
         setMarketOpenIndexPrice(initialIndex);
         setCircuitBreakerTriggered(false);
-    }, []);
+    }, [marketStatus]);
 
     // Effect 1a: Market Clock Engine
     useEffect(() => {

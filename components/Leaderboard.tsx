@@ -17,6 +17,7 @@ interface TraderStats {
     tradesCount: number;
     isCurrentUser: boolean;
     isDisqualified: boolean;
+    rank?: number;
 }
 
 const STARTING_CAPITAL = 100000;
@@ -31,6 +32,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
     const [portfolios, setPortfolios] = useState<any>({});
     const [holdings, setHoldings] = useState<any>({});
     const [history, setHistory] = useState<any>({});
+    const [orders, setOrders] = useState<any>({});
 
     // 1. Subscribe to all data nodes on mount
     useEffect(() => {
@@ -39,12 +41,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
         const unsubPortfolios = apiClient.subscribePortfolios(setPortfolios);
         const unsubHoldings = apiClient.subscribeHoldings(setHoldings);
         const unsubHistory = apiClient.subscribeHistory(setHistory);
+        const unsubOrders = apiClient.subscribeOrders(setOrders);
 
         return () => {
             unsubProfiles();
             unsubPortfolios();
             unsubHoldings();
             unsubHistory();
+            unsubOrders();
         };
     }, []);
 
@@ -58,7 +62,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
                 const portfolio = portfolios[profile.id] || { cash: STARTING_CAPITAL };
                 const userHoldings = holdings[profile.id] || {};
                 const userHistory = history[profile.id] || [];
+                const userActiveOrders = orders[profile.id] || {};
                 
+                // Calculate market value
                 let marketValue = 0;
                 Object.entries(userHoldings).forEach(([symbol, holding]: [string, any]) => {
                     const currentStock = stocks.find(s => s.symbol === symbol);
@@ -67,7 +73,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
 
                 const totalValue = (portfolio.cash || 0) + marketValue;
                 const plPercentage = ((totalValue - STARTING_CAPITAL) / STARTING_CAPITAL) * 100;
-                const tradesCount = Array.isArray(userHistory) ? userHistory.length : 0;
+                
+                // Logic: history (executed/cancelled) + activeOrders (pending/working)
+                const historyCount = Array.isArray(userHistory) ? userHistory.length : Object.keys(userHistory).length;
+                const activeCount = Array.isArray(userActiveOrders) ? userActiveOrders.length : Object.keys(userActiveOrders).length;
+                const tradesCount = historyCount + activeCount;
 
                 return {
                     profileId: profile.id,
@@ -88,258 +98,317 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
             return a.isDisqualified ? 1 : -1;
         });
 
-        setTraderStats(stats);
-    }, [profiles, portfolios, holdings, history, stocks, currentUserProfile, isAdmin]);
+        // Assign ranks
+        const rankedStats = stats.map((s, index) => ({ ...s, rank: index + 1 }));
+        setTraderStats(rankedStats);
+    }, [profiles, portfolios, holdings, history, orders, stocks, currentUserProfile, isAdmin, isLoading]);
 
     const formatCurrency = (val: number) => 
         new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(val);
 
+    const currentUserRank = useMemo(() => 
+        traderStats.find(s => s.isCurrentUser), 
+    [traderStats]);
+
+    const topThree = useMemo(() => 
+        traderStats.filter(s => !s.isDisqualified).slice(0, 3), 
+    [traderStats]);
+
+    const restOfTraders = useMemo(() => 
+        traderStats.slice(3), 
+    [traderStats]);
+
     return (
-        <div className="w-full bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden">
-            <div className="p-6 sm:p-8 flex items-center justify-between border-b border-white/10">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-600/10 rounded-2xl">
-                        <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
+        <div className="w-full flex flex-col gap-8">
+            {/* --- Personal Rank Banner --- */}
+            {currentUserRank && (
+                <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2rem] p-6 text-white shadow-2xl shadow-blue-500/20"
+                >
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 mix-blend-overlay"></div>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700"></div>
+                    
+                    <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-6">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-blue-400 rounded-2xl blur-lg opacity-40 animate-pulse"></div>
+                                <div className="relative w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl font-black border border-white/30">
+                                    #{currentUserRank.rank}
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black tracking-tight">{currentUserRank.name}, You're at the top!</h3>
+                                <p className="text-blue-100 text-sm font-medium opacity-90">Keep trading to climb higher in the global standings.</p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-8">
+                            <div className="text-right">
+                                <p className="text-[10px] uppercase tracking-widest font-black text-blue-100/70 mb-1">Portfolio Value</p>
+                                <p className="text-2xl font-black font-mono">{formatCurrency(currentUserRank.totalValue)}</p>
+                            </div>
+                            <div className={`flex flex-col items-end px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20`}>
+                                <p className="text-[10px] uppercase tracking-widest font-black text-blue-100/70 mb-1">Performance</p>
+                                <div className={`flex items-center gap-1.5 text-lg font-black ${currentUserRank.plPercentage >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    {currentUserRank.plPercentage >= 0 ? '+' : ''}{currentUserRank.plPercentage.toFixed(2)}%
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Global Leaderboard</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Competitive performance tracking</p>
-                    </div>
-                </div>
-                <div className="hidden sm:block text-right">
-                    <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-600/10 px-3 py-1.5 rounded-full">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                        </span>
-                        Live Active Sync
-                    </span>
-                </div>
+                </motion.div>
+            )}
+
+            {/* --- Top 3 Podium Cards --- */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {topThree.map((trader, idx) => (
+                    <motion.div
+                        key={trader.profileId}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: idx * 0.1 }}
+                        whileHover={{ y: -10 }}
+                        className={`relative rounded-[2.5rem] p-8 overflow-hidden border ${
+                            idx === 0 
+                            ? 'bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 border-amber-300/50 text-amber-950 shadow-amber-500/30' 
+                            : idx === 1 
+                            ? 'bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 border-gray-100/50 text-gray-900 shadow-gray-400/30'
+                            : 'bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 border-orange-300/50 text-orange-950 shadow-orange-500/30'
+                        } shadow-2xl flex flex-col items-center text-center`}
+                    >
+                        {/* Shine Effect */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/30 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                        
+                        <div className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center text-2xl">
+                            {idx === 0 ? '🏆' : idx === 1 ? '🥈' : '🥉'}
+                        </div>
+
+                        <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-xl border-4 border-white/30 flex items-center justify-center text-4xl font-black shadow-inner mb-6 relative">
+                             {trader.name.charAt(0).toUpperCase()}
+                             {/* Floating Rank Badge */}
+                             <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg font-black text-gray-900 border-2 border-inherit shadow-lg">
+                                {trader.rank}
+                             </div>
+                        </div>
+
+                        <h4 className="text-2xl font-black tracking-tight mb-1">{trader.name}</h4>
+                        <div className="px-4 py-1 rounded-full bg-black/10 text-[10px] font-black uppercase tracking-widest mb-6">
+                            Elite Trader
+                        </div>
+
+                        <div className="w-full space-y-4">
+                            <div className="flex justify-between items-center border-b border-black/5 pb-2">
+                                <span className="text-[10px] font-bold uppercase opacity-60">Total Trades</span>
+                                <span className="font-mono font-black">{trader.tradesCount}</span>
+                            </div>
+                            <div className="flex justify-between items-center border-b border-black/5 pb-2">
+                                <span className="text-[10px] font-bold uppercase opacity-60">Portfolio</span>
+                                <span className="font-mono font-black">{formatCurrency(trader.totalValue)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold uppercase opacity-60">P/L %</span>
+                                <span className={`font-mono font-black ${trader.plPercentage >= 0 ? 'text-black' : 'text-rose-900'}`}>
+                                    {trader.plPercentage >= 0 ? '+' : ''}{trader.plPercentage.toFixed(2)}%
+                                </span>
+                            </div>
+                        </div>
+                    </motion.div>
+                ))}
             </div>
 
-            <div className="overflow-x-auto">
-                {isLoading ? (
-                    <div className="flex flex-col items-center justify-center p-20 gap-4">
-                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">Calculating rankings...</p>
-                    </div>
-                ) : error ? (
-                    <div className="flex flex-col items-center justify-center p-20 gap-4 text-center">
-                        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-                            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            {/* --- Main Leaderboard Table --- */}
+            <div className="bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden">
+                <div className="p-8 flex items-center justify-between border-b border-white/10 decoration-wavy">
+                    <div className="flex items-center gap-4">
+                        <div className="p-4 bg-emerald-500/10 rounded-2xl">
+                            <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
                         </div>
-                        <p className="text-gray-900 dark:text-white font-bold">Failed to load leaderboard</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">{error}</p>
-                        <button 
-                            onClick={() => fetchLeaderboardData()}
-                            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
-                        >
-                            Try Again
-                        </button>
+                        <div>
+                            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Active Rankings</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide uppercase text-[10px]">Real-time synchronization engine enabled</p>
+                        </div>
                     </div>
-                ) : (
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50/50 dark:bg-gray-900/50">
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Rank</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Trader</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-center">Trades</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-right">Portfolio Value</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-right">Performance</th>
-                                {isAdmin && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-center">Actions</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100/10 dark:divide-gray-800/50">
-                            <AnimatePresence initial={false}>
-                                {traderStats.length > 0 ? (
-                                    traderStats.map((trader, index) => (
+                </div>
+
+                <div className="overflow-x-auto">
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center p-32 gap-6">
+                            <div className="relative">
+                                <div className="w-16 h-16 border-4 border-blue-600/20 rounded-full"></div>
+                                <div className="absolute inset-0 w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                            <p className="text-gray-500 dark:text-gray-400 font-black uppercase tracking-[0.2em] text-[11px]">Syncing with exchange data...</p>
+                        </div>
+                    ) : (
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-gray-50/50 dark:bg-gray-900/40 border-b border-white/5">
+                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Rank</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Trader Identity</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">Trade Activity</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-right">Liquidity Value</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-right">Performance Index</th>
+                                    {isAdmin && <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">Governance</th>}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100/10 dark:divide-gray-800/20">
+                                <AnimatePresence>
+                                    {restOfTraders.map((trader, index) => (
                                         <motion.tr 
                                             key={trader.profileId}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: index * 0.05 }}
-                                            className={`${trader.isCurrentUser ? 'bg-blue-600/5' : ''} ${trader.isDisqualified ? 'opacity-50 grayscale-[0.5]' : ''} hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group`}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ delay: index * 0.03 }}
+                                            className={`${trader.isCurrentUser ? 'bg-blue-600/10 dark:bg-blue-600/10' : ''} ${trader.isDisqualified ? 'opacity-40 grayscale' : ''} hover:bg-white/50 dark:hover:bg-white/5 transition-all group`}
                                         >
-                                            <td className="px-6 py-4">
+                                            <td className="px-8 py-6">
                                                 <div className="flex items-center gap-3">
-                                                    <span className={`w-8 h-8 flex items-center justify-center rounded-lg font-black ${
-                                                        trader.isDisqualified ? 'bg-gray-200 text-gray-400' :
-                                                        index === 0 ? 'bg-yellow-400 text-yellow-900 shadow-[0_0_15px_rgba(250,204,21,0.4)]' :
-                                                        index === 1 ? 'bg-gray-300 text-gray-700' :
-                                                        index === 2 ? 'bg-orange-400 text-orange-950' :
-                                                        'text-gray-400 dark:text-gray-500'
+                                                    <span className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm border ${
+                                                        trader.isCurrentUser ? 'bg-blue-600 text-white border-blue-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-transparent dark:text-gray-400'
                                                     }`}>
-                                                        {trader.isDisqualified ? 'DQ' : (index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1)}
+                                                        {trader.rank}
                                                     </span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm ${
-                                                        trader.isDisqualified ? 'bg-gray-400' :
-                                                        trader.isCurrentUser ? 'bg-blue-600' : 'bg-gradient-to-br from-gray-400 to-gray-600'
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-xl shadow-black/5 ${
+                                                        trader.isCurrentUser 
+                                                        ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white translate-z-10' 
+                                                        : 'bg-gradient-to-br from-gray-700 to-gray-900 text-gray-100 dark:from-gray-100 dark:to-gray-300 dark:text-gray-900'
                                                     }`}>
                                                         {trader.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className={`font-bold ${trader.isDisqualified ? 'text-gray-400 line-through' : trader.isCurrentUser ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-200'}`}>
+                                                        <span className={`text-base font-black tracking-tight ${trader.isCurrentUser ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
                                                             {trader.name}
-                                                            {trader.isCurrentUser && <span className="ml-2 text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase">You</span>}
-                                                            {trader.isDisqualified && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full uppercase">Disqualified</span>}
                                                         </span>
+                                                        <div className="flex gap-2 items-center mt-1">
+                                                            {trader.isCurrentUser && <span className="text-[8px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">You</span>}
+                                                            {trader.isDisqualified && <span className="text-[8px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">DQD</span>}
+                                                            <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Level 1 Investor</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg font-mono text-sm font-bold text-gray-600 dark:text-gray-400">
-                                                    {trader.tradesCount}
+                                            <td className="px-8 py-6 text-center">
+                                                <div className="inline-flex flex-col items-center">
+                                                    <span className="text-sm font-black font-mono text-gray-900 dark:text-gray-100">{trader.tradesCount}</span>
+                                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Trades</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <span className="text-base font-black font-mono text-gray-900 dark:text-gray-100 tracking-tighter">
+                                                    {formatCurrency(trader.totalValue)}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right font-mono font-bold text-gray-900 dark:text-gray-200">
-                                                {formatCurrency(trader.totalValue)}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm ${
-                                                    trader.isDisqualified ? 'text-gray-400 bg-gray-100' :
+                                            <td className="px-8 py-6 text-right">
+                                                <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-black shadow-lg shadow-black/5 ${
                                                     trader.plPercentage >= 0 
-                                                    ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-600/10' 
-                                                    : 'text-rose-600 dark:text-rose-400 bg-rose-600/10'
+                                                    ? 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 border border-emerald-500/20' 
+                                                    : 'text-rose-600 bg-rose-500/10 dark:text-rose-400 border border-rose-500/20'
                                                 }`}>
                                                     <svg className={`w-3 h-3 ${trader.plPercentage < 0 ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 15l7-7 7 7" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 15l7-7 7 7" />
                                                     </svg>
-                                                    {trader.plPercentage.toFixed(2)}%
+                                                    {trader.plPercentage >= 0 ? '+' : ''}{trader.plPercentage.toFixed(2)}%
                                                 </div>
                                             </td>
                                             {isAdmin && (
-                                                <td className="px-6 py-4 text-center">
+                                                <td className="px-8 py-6 text-center">
                                                     <button 
                                                         onClick={async (e) => {
                                                             const btn = e.currentTarget;
                                                             btn.disabled = true;
-                                                            const originalContent = btn.innerHTML;
-                                                            btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
                                                             try {
                                                                 await apiClient.updateProfileStatus(trader.profileId, !trader.isDisqualified);
                                                             } finally {
                                                                 btn.disabled = false;
-                                                                btn.innerHTML = originalContent;
                                                             }
                                                         }}
-                                                        className={`p-2 rounded-lg transition-colors ${
+                                                        className={`p-3 rounded-2xl transition-all hover:scale-110 active:scale-95 ${
                                                             trader.isDisqualified 
-                                                            ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' 
-                                                            : 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20'
+                                                            ? 'text-emerald-600 bg-emerald-500/10' 
+                                                            : 'text-rose-600 bg-rose-500/10'
                                                         }`}
-                                                        title={trader.isDisqualified ? "Re-activate Trader" : "Disqualify Trader"}
                                                     >
                                                         {trader.isDisqualified ? (
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                         ) : (
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                                                         )}
                                                     </button>
                                                 </td>
                                             )}
                                         </motion.tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={4} className="px-6 py-20 text-center">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                                                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                    </svg>
-                                                </div>
-                                                <p className="text-gray-500 dark:text-gray-400 font-medium">No traders synced to the cloud yet.</p>
-                                                <p className="text-sm text-gray-400 dark:text-gray-500 max-w-[300px] mx-auto">Toggle between tabs or perform a trade to trigger synchronization.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </AnimatePresence>
-                        </tbody>
-                    </table>
-                )}
+                                    ))}
+                                </AnimatePresence>
+                            </tbody>
+                        </table>
+                    )}
+                </div>
             </div>
 
-            {/* Live Global Activity Ticker */}
-            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Live Global Activity</h4>
-                    </div>
+            {/* --- Live Market Pulse Ticker --- */}
+            <div className="bg-gradient-to-br from-gray-900 to-black rounded-[2rem] p-6 text-white overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-8 opacity-10">
+                    <svg className="w-32 h-32 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4 8h-2v4h2v-4zm4-4h-2v10h2V7zm-8 10h-2v4h2v-4zm-4-8H5v12h2V9zm-4 4H1v8h2v-8z"/></svg>
                 </div>
                 
-                <div className="relative overflow-hidden bg-gray-50/50 dark:bg-gray-900/30 rounded-2xl p-2 border border-gray-100 dark:border-gray-800/50">
-                    <div className="flex flex-col gap-1.5 max-h-[160px] overflow-y-auto no-scrollbar scroll-smooth">
-                        {(() => {
-                            const allTrades: any[] = [];
-                            Object.entries(history).forEach(([userId, userTrades]: [string, any]) => {
-                                if (Array.isArray(userTrades)) {
-                                    userTrades.forEach(t => allTrades.push({ ...t, traderId: userId }));
-                                }
-                            });
-                            
-                            const sortedTrades = allTrades.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 10);
-                            
-                            if (sortedTrades.length === 0) {
-                                return (
-                                    <div className="py-8 text-center">
-                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 italic font-medium">Waiting for market activity...</p>
-                                    </div>
-                                );
+                <div className="flex items-center gap-3 mb-6 relative z-10">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping"></div>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Live Global Activity Pulse</h4>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative z-10">
+                    {(() => {
+                        const allTrades: any[] = [];
+                        Object.entries(history).forEach(([userId, userTrades]: [string, any]) => {
+                            if (Array.isArray(userTrades)) {
+                                userTrades.forEach(t => allTrades.push({ ...t, traderId: userId }));
+                            } else if (userTrades && typeof userTrades === 'object') {
+                                Object.values(userTrades).forEach(t => allTrades.push({ ...t, traderId: userId }));
                             }
+                        });
+                        
+                        const sortedTrades = allTrades.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 6);
+                        
+                        if (sortedTrades.length === 0) {
+                            return <p className="col-span-2 text-center py-8 text-gray-500 text-[11px] font-black uppercase tracking-widest italic font-medium">Scanning for market executions...</p>;
+                        }
 
-                            return sortedTrades.map((trade, idx) => (
-                                <div 
-                                    key={`${trade.id || idx}-${trade.traderId}`} 
-                                    className="flex items-center justify-between py-2.5 px-4 rounded-xl hover:bg-white dark:hover:bg-gray-800/50 shadow-sm transition-all border border-transparent hover:border-blue-500/20 group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-[9px] font-mono font-bold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                                            {new Date(trade.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                        </span>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-black text-gray-900 dark:text-gray-200 group-hover:text-blue-500 transition-colors">
-                                                {trade.traderName || 'Anonymous Trader'}
-                                            </span>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
-                                                    trade.tradeType === 'BUY' 
-                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' 
-                                                        : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                                                }`}>
-                                                    {trade.tradeType}
-                                                </span>
-                                                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
-                                                    {trade.quantity.toLocaleString()} {trade.symbol}
-                                                </span>
-                                                <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                                                    @ {formatCurrency(trade.price || 0)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
-                                            {trade.finalStatus || 'SUCCESS'}
-                                        </span>
-                                    </div>
+                        return sortedTrades.map((trade, idx) => (
+                            <motion.div 
+                                key={`${trade.id || idx}-${trade.traderId}`}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between hover:bg-white/10 transition-colors group"
+                            >
+                                <div className="flex items-center gap-4">
+                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${
+                                         trade.tradeType === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                                     }`}>
+                                         {trade.tradeType === 'BUY' ? 'B' : 'S'}
+                                     </div>
+                                     <div className="flex flex-col">
+                                         <span className="text-xs font-black group-hover:text-blue-400 transition-colors uppercase tracking-tighter">{trade.traderName || 'Anonymous'}</span>
+                                         <div className="flex gap-2 items-center text-[10px] text-gray-400 font-bold">
+                                             <span>{trade.quantity} {trade.symbol}</span>
+                                             <span>•</span>
+                                             <span className="font-mono">{formatCurrency(trade.price || 0)}</span>
+                                         </div>
+                                     </div>
                                 </div>
-                            ));
-                        })()}
-                    </div>
+                                <span className="text-[9px] font-black bg-blue-500/20 text-blue-400 px-2 py-1 rounded-md">
+                                    {new Date(trade.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </motion.div>
+                        ));
+                    })()}
                 </div>
             </div>
         </div>

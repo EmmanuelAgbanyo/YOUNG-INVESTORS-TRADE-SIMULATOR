@@ -247,7 +247,7 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
       case 'Team':
         return <TeamView profile={profile} orderHistory={orderHistory} />;
       case 'Admin':
-        return isAdmin ? <AdminView stocks={stocks} setToast={setToast} marketStatus={marketStatus} openMarketAdmin={openMarketAdmin} closeMarketAdmin={closeMarketAdmin} /> : null;
+        return isAdmin ? <AdminView stocks={stocks} setToast={setToast} marketStatus={marketStatus} openMarketAdmin={openMarketAdmin} closeMarketAdmin={closeMarketAdmin} adminSettings={adminSettings} /> : null;
       default:
         return null;
     }
