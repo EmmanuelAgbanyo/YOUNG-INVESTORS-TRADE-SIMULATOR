@@ -211,7 +211,7 @@ const App: React.FC = () => {
     return <SplashScreen />;
   }
 
-  const isAdmin = activeProfile.name === 'Admin';
+  const isAdmin = activeProfile.name === 'Admin' || activeProfile.email === 'admin@yin.com';
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-base-content font-sans flex flex-col animate-fade-in relative overflow-hidden">
