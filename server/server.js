@@ -76,9 +76,13 @@ async function scrapeGSE() {
                 const cols = $(row).find('td');
                 if (cols.length >= 4) {
                     const symbol = $(cols[0]).text().trim();
-                    const price = parseFloat($(cols[1]).text().trim()) || 0;
-                    const change = parseFloat($(cols[2]).text().trim()) || 0;
-                    const volume = parseInt($(cols[3]).text().trim().replace(/,/g, '')) || 0;
+                    // Name is at cols[1]
+                    const volumeStr = $(cols[2]).text().trim().replace(/,/g, '');
+                    const volume = parseInt(volumeStr) || 0;
+                    const priceStr = $(cols[3]).text().trim().replace(/,/g, '');
+                    const price = parseFloat(priceStr) || 0;
+                    const changeStr = $(cols[4]).text().trim().replace(/,/g, '');
+                    const change = parseFloat(changeStr) || 0;
 
                     if (symbol && price > 0) {
                         stocks.push({ symbol, price, change, volume });

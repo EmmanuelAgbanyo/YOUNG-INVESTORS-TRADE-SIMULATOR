@@ -1,9 +1,10 @@
 
 import React, { useMemo } from 'react';
-import type { Stock } from '../types.ts';
+import type { Stock, MarketStatus } from '../types.ts';
 
 interface MarketMoversProps {
   stocks: Stock[];
+  marketStatus: MarketStatus;
 }
 
 const TrendingUpIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -79,7 +80,7 @@ const EmptyState: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
-const MarketMovers: React.FC<MarketMoversProps> = ({ stocks }) => {
+const MarketMovers: React.FC<MarketMoversProps> = ({ stocks, marketStatus }) => {
   const { gainers, losers, lastUpdated } = useMemo(() => {
     // Use the raw `change` field from the Firebase scraper data (daily % change from GSE).
     // Fall back to computing from lastPrice if change is 0 (in case of mock data).
@@ -120,9 +121,12 @@ const MarketMovers: React.FC<MarketMoversProps> = ({ stocks }) => {
             <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">Updated {lastUpdated}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-500/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-          <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Live</span>
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${marketStatus === 'OPEN' ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+          {marketStatus === 'OPEN' && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />}
+          {marketStatus === 'CLOSED' && <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />}
+          <span className={`text-[10px] font-black uppercase tracking-wider ${marketStatus === 'OPEN' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>
+             {marketStatus === 'OPEN' ? 'Live' : 'Closing'}
+          </span>
         </div>
       </div>
 

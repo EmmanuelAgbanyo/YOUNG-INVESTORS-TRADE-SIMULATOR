@@ -204,7 +204,7 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
                 </div>
               </div>
               <div className="space-y-4 sm:space-y-6 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
-                <MarketMovers stocks={stocks} />
+                <MarketMovers stocks={stocks} marketStatus={marketStatus} />
                 <MarketNewsFeed
                   news={news}
                   isLoading={isNewsLoading}
@@ -234,6 +234,7 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
                 analystSession={currentAnalystSession}
                 onStartAnalysis={startAnalysis}
                 onSendMessage={sendMessage}
+                marketStatus={marketStatus}
               />
             </div>
           </div>

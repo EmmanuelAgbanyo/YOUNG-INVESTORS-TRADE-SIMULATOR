@@ -2,7 +2,7 @@
 
 
 import React, { useState } from 'react';
-import type { Stock, Message, OHLC } from '../types.ts';
+import type { Stock, Message, OHLC, MarketStatus } from '../types.ts';
 import Card from './ui/Card.tsx';
 import AIAnalystTerminal from './AIAnalystTerminal.tsx';
 
@@ -17,6 +17,7 @@ interface StockChartViewProps {
     analystSession: AnalystSession;
     onStartAnalysis: (stock: Stock) => void;
     onSendMessage: (symbol: string, message: string) => void;
+    marketStatus?: MarketStatus;
 }
 
 interface TooltipData {
@@ -32,7 +33,7 @@ const ChartLineIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 
-const StockChartView: React.FC<StockChartViewProps> = ({ stock, analystSession, onStartAnalysis, onSendMessage }) => {
+const StockChartView: React.FC<StockChartViewProps> = ({ stock, analystSession, onStartAnalysis, onSendMessage, marketStatus = 'OPEN' }) => {
     const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
 
     if (!stock) {
@@ -96,7 +97,9 @@ const StockChartView: React.FC<StockChartViewProps> = ({ stock, analystSession, 
             <div className="flex flex-wrap justify-between items-start mb-4">
                 <div>
                     <h3 className="text-2xl font-bold text-text-strong">{stock.name} ({stock.symbol})</h3>
-                    <p className="text-base-content">Live Price Chart</p>
+                    <p className={`font-semibold text-sm ${marketStatus === 'OPEN' ? 'text-emerald-500' : 'text-slate-500'}`}>
+                        {marketStatus === 'OPEN' ? 'Live Price Chart' : 'Closing Price Chart'}
+                    </p>
                 </div>
                 <div className="text-right">
                     <p className="text-3xl font-mono font-bold" style={{ color: `rgb(${color})` }}>{price.toFixed(2)}</p>

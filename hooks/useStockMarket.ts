@@ -61,7 +61,7 @@ export const MARKET_EVENTS_TEMPLATES: Omit<MarketEvent, 'duration' | 'expiresAt'
 
 
 export const useStockMarket = (activeProfile: UserProfile | null) => {
-    const [stocks, setStocks] = useState<Stock[]>([]);
+    const [stocks, setStocks] = useState<Stock[]>(STOCKS_DATA);
     const [profileState, setProfileState] = useState<ProfileState | null>(null);
     const [toast, setToast] = useState<ToastMessage | null>(null);
     const [news, setNews] = useState<NewsHeadline[]>([]);
@@ -346,11 +346,8 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     }, [stocks]);
 
 
-    // LIVE DATA SYNC - Firebase RTDB Listener
+    // LIVE DATA SYNC - Firebase RTDB Listener (Always syncs to display accurate Closing Prices even when off-hours)
     useEffect(() => {
-        if (marketStatus !== 'OPEN') return;
-
-        // Immediately sync data when market opens using Firebase Listener
         const marketRef = ref(database, 'market_data');
         const unsubscribe = onValue(marketRef, (snapshot) => {
             if (snapshot.exists()) {
