@@ -47,12 +47,6 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
         setIsLoading(true);
 
         try {
-            if ((loginEmail === 'Admin' || loginEmail === 'admin@yin.com') && (loginPassword === 'GSE@2024!' || loginPassword === 'GSE@2026!')) {
-                const adminProfile: UserProfile = { id: 'admin_session', name: 'Admin', createdAt: Date.now() };
-                onProfileSelected(adminProfile);
-                setIsLoading(false);
-                return;
-            }
 
             const data = await apiClient.login(toEmail(loginEmail), loginPassword);
             const profilesData = await apiClient.getProfiles(data.userId);

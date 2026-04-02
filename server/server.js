@@ -132,14 +132,54 @@ async function scrapeGSE() {
         ];
     }
 
+    let marketStatus = 'OPEN'; // Default to open during execution
     try {
         if (!auth.currentUser) await loginScraper();
         
+        // 1. Check for weekend
+        const now = new Date();
+        const gmtDay = now.getUTCDay(); // 0 is Sunday, 6 is Saturday
+        if (gmtDay === 0 || gmtDay === 6) {
+            marketStatus = 'CLOSED';
+        } else {
+            // 2. Check AFX Kwayisi for the summary date
+            // If the summary is already out for today, the market is closed.
+            const today = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+            const data = await (await fetch('https://afx.kwayisi.org/gse/', { headers: { 'User-Agent': 'Mozilla/5.0' } })).text();
+            if (data.includes(`SUMMARY FOR ${today}`)) {
+                marketStatus = 'CLOSED';
+                console.log("[Market Sync] Detected 'Market Closed' via AFX Summary for today.");
+            } else {
+                // 3. Fallback/Double Check: Check GSE Official or Market Watch for explicit 'Closed'
+                try {
+                    const gseData = await (await fetch('https://gsemarketwatch.com/', { headers: { 'User-Agent': 'Mozilla/5.0' } })).text();
+                    if (gseData.toLowerCase().includes('market closed') || gseData.toLowerCase().includes('re-opens at')) {
+                        marketStatus = 'CLOSED';
+                        console.log("[Market Sync] Detected 'Market Closed' via GSE Market Watch.");
+                    } else if (gseData.includes('delay') || gseData.includes('Delayed')) {
+                        marketStatus = 'OPEN';
+                        console.log("[Market Sync] Detected 'Market Open' via GSE Market Watch Delay indicator.");
+                    }
+                } catch (e) {
+                    console.warn("GSE Market Watch check failed, relying on AFX/Time.");
+                }
+            }
+
+            // 4. Time-based safety (GSE hours: 10:00 - 15:00 GMT)
+            const gmtHours = now.getUTCHours();
+            if (gmtHours < 9 || gmtHours >= 16) { // Buffer of 1 hour
+                marketStatus = 'CLOSED';
+            }
+        }
+
         const marketMap = {};
         stocks.forEach(s => { marketMap[s.symbol] = s; });
 
-        await set(ref(db, 'market_data'), marketMap);
-        console.log("✓ Pushed to real-time database!");
+        await Promise.all([
+            set(ref(db, 'market_data'), marketMap),
+            set(ref(db, 'market_status'), marketStatus)
+        ]);
+        console.log(`✓ Sync complete. Market is ${marketStatus}. Data pushed to RTDB.`);
     } catch (err) {
         console.error("Firebase write error:", err.message);
     }
