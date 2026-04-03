@@ -15,6 +15,7 @@ interface HeaderProps {
     onSecureProfile: () => void;
     onCreateTeam: () => void;
     onViewInviteCode: () => void;
+    lastSync: number | null;
 }
 
 const LogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -61,15 +62,40 @@ const MarketClock: React.FC<{ status: MarketStatus }> = ({ status }) => {
         PRE_MARKET: { text: 'Pre-Market', color: 'text-info', pulse: true },
         HALTED: { text: 'Trading Halted', color: 'text-warning', pulse: true },
     };
-    const config = statusConfig[status];
-
     return (
         <div className="flex items-center space-x-1.5">
             <div className={`relative flex h-2.5 w-2.5 sm:h-3 sm:w-3`}>
-                {config.pulse && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${config.color.replace('text-', 'bg-')}`}></span>}
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 ${config.color.replace('text-', 'bg-')}`}></span>
+                {statusConfig[status].pulse && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${statusConfig[status].color.replace('text-', 'bg-')}`}></span>}
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 ${statusConfig[status].color.replace('text-', 'bg-')}`}></span>
             </div>
-            <span className={`hidden sm:block font-semibold text-xs sm:text-sm ${config.color}`}>{config.text}</span>
+            <span className={`hidden sm:block font-semibold text-xs sm:text-sm ${statusConfig[status].color}`}>{statusConfig[status].text}</span>
+        </div>
+    );
+};
+
+const SyncStatus: React.FC<{ lastSync: number | null }> = ({ lastSync }) => {
+    const [timeAgo, setTimeAgo] = useState('');
+
+    useEffect(() => {
+        if (!lastSync) return;
+        
+        const updateTime = () => {
+            const seconds = Math.floor((Date.now() - lastSync) / 1000);
+            if (seconds < 60) setTimeAgo(`${seconds}s ago`);
+            else setTimeAgo(`${Math.floor(seconds / 60)}m ago`);
+        };
+
+        updateTime();
+        const interval = setInterval(updateTime, 10000);
+        return () => clearInterval(interval);
+    }, [lastSync]);
+
+    if (!lastSync) return null;
+
+    return (
+        <div className="hidden md:flex items-center space-x-1 px-2 py-0.5 rounded-full bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">Sync: {timeAgo}</span>
         </div>
     );
 };
@@ -168,7 +194,7 @@ const UserMenu: React.FC<{
 };
 
 
-const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, cash, marketSentiment, marketStatus, onOpenGuide, profile, onLogout, onSecureProfile, onCreateTeam, onViewInviteCode }) => {
+const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, cash, marketSentiment, marketStatus, onOpenGuide, profile, onLogout, onSecureProfile, onCreateTeam, onViewInviteCode, lastSync }) => {
     return (
         <div className="sticky top-2 sm:top-4 z-50 w-full px-2 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <header className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border border-white/40 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-xl sm:rounded-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)]">
@@ -188,6 +214,7 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, cash, marketSentime
                         {/* Market status — hide text on very small, show dot always */}
                         <div className="flex items-center gap-1.5 mr-1 sm:mr-2">
                             <MarketClock status={marketStatus} />
+                            <SyncStatus lastSync={lastSync} />
                         </div>
 
                         {/* Guide button — hidden on xs, show sm+ */}

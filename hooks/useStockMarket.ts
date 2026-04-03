@@ -72,6 +72,8 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [marketOpenIndexPrice, setMarketOpenIndexPrice] = useState(0);
     const [circuitBreakerTriggered, setCircuitBreakerTriggered] = useState(false);
+    const [lastSync, setLastSync] = useState<number | null>(null);
+    const [hasInitialSync, setHasInitialSync] = useState(false);
 
     const [adminSettings, setAdminSettings] = useState<AdminSettings>(() => {
         try {
@@ -349,13 +351,21 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     // LIVE DATA SYNC - Firebase RTDB Listener (Always syncs to display accurate Closing Prices even when off-hours)
     useEffect(() => {
         const marketRef = ref(database, 'market_data');
-        const unsubscribe = onValue(marketRef, (snapshot) => {
+
+        const unsubMarket = onValue(marketRef, (snapshot) => {
             if (snapshot.exists()) {
                 const liveDataMap = snapshot.val();
                 
+                // Extract last_updated if present
+                if (liveDataMap.last_updated) {
+                    setLastSync(liveDataMap.last_updated);
+                }
+                
                 setStocks(prev => {
-                    if (prev.length === 0) {
-                        return STOCKS_DATA.map(baseStock => {
+                    // Force initial sync to establish source of truth
+                    if (!hasInitialSync || prev.length === 0) {
+                        setHasInitialSync(true);
+                        return prev.map(baseStock => {
                             const liveData = liveDataMap[baseStock.symbol];
                             return {
                                 ...baseStock,
@@ -393,9 +403,9 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
         });
 
         return () => {
-            unsubscribe();
+            unsubMarket();
         };
-    }, [marketStatus, showToast]);
+    }, [marketStatus, showToast, hasInitialSync]);
 
     useEffect(() => {
         const initialIndex = STOCKS_DATA.reduce((sum, s) => sum + s.price, 0) / STOCKS_DATA.length;
@@ -689,6 +699,7 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
         activeMarketEvent,
         isLoaded,
         adminSettings,
+        lastSync,
         syncLiveData: () => {}, // Kept for backwards compatibility but does nothing manually now
     };
 };

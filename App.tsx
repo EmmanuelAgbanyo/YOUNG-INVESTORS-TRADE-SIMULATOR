@@ -236,6 +236,7 @@ const App: React.FC = () => {
           onSecureProfile={() => setIsSetPasswordModalOpen(true)}
           onCreateTeam={() => setIsCreateTeamModalOpen(true)}
           onViewInviteCode={handleViewInviteCode}
+          lastSync={stockMarket.lastSync}
         />
         <StockTicker stocks={stockMarket.stocks} />
         <main className="flex-grow w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">

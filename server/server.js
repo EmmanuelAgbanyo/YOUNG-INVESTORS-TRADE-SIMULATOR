@@ -176,10 +176,10 @@ async function scrapeGSE() {
         stocks.forEach(s => { marketMap[s.symbol] = s; });
 
         await Promise.all([
-            set(ref(db, 'market_data'), marketMap),
+            set(ref(db, 'market_data'), { ...marketMap, last_updated: Date.now() }),
             set(ref(db, 'market_status'), marketStatus)
         ]);
-        console.log(`✓ Sync complete. Market is ${marketStatus}. Data pushed to RTDB.`);
+        console.log(`✓ Sync complete. Market is ${marketStatus}. Data pushed to RTDB at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
         console.error("Firebase write error:", err.message);
     }
