@@ -1,6 +1,6 @@
 const { initializeApp } = require('firebase/app');
 const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } = require('firebase/auth');
-const { getDatabase, ref, set } = require('firebase/database');
+const { getDatabase, ref, set, get } = require('firebase/database');
 const dotenv = require('dotenv');
 const path = require('path');
 
@@ -175,11 +175,28 @@ async function scrapeGSE() {
         const marketMap = {};
         stocks.forEach(s => { marketMap[s.symbol] = s; });
 
-        await Promise.all([
-            set(ref(db, 'market_data'), { ...marketMap, last_updated: Date.now() }),
-            set(ref(db, 'market_status'), marketStatus)
-        ]);
-        console.log(`✓ Sync complete. Market is ${marketStatus}. Data pushed to RTDB at ${new Date().toLocaleTimeString()}`);
+        // 5. Check if we should update market status (respect manual override)
+        let shouldUpdateStatus = true;
+        try {
+            const modeSnapshot = await get(ref(db, 'market_control_mode'));
+            if (modeSnapshot.exists() && modeSnapshot.val() === 'MANUAL') {
+                shouldUpdateStatus = false;
+                console.log("[Market Sync] Skipping status update due to MANUAL control mode.");
+            }
+        } catch (modeErr) {
+            console.warn("Failed to fetch market_control_mode, defaulting to update.");
+        }
+
+        const updates = [
+            set(ref(db, 'market_data'), { ...marketMap, last_updated: Date.now() })
+        ];
+        
+        if (shouldUpdateStatus) {
+            updates.push(set(ref(db, 'market_status'), marketStatus));
+        }
+
+        await Promise.all(updates);
+        console.log(`✓ Sync complete. Market is ${shouldUpdateStatus ? marketStatus : 'MANUAL (Current state preserved)'}. Data pushed to RTDB at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
         console.error("Firebase write error:", err.message);
     }
@@ -188,7 +205,7 @@ async function scrapeGSE() {
 async function start() {
     await loginScraper();
     scrapeGSE();
-    setInterval(scrapeGSE, 60000);
+    setInterval(scrapeGSE, 10000);
 }
 
 start();

@@ -1,10 +1,9 @@
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { ref, onValue, get, set, update } from 'firebase/database';
 import { database } from '../firebase.ts';
 import { apiClient } from './useAPI.ts';
-import type { Stock, ProfileState, ToastMessage, NewsHeadline, MarketSentiment, TradeOrder, ActiveOrder, OrderHistoryItem, OHLC, UserProfile, Team, AdminSettings, UnsettledCashItem, MarketEvent, MarketStatus, PerformanceHistoryEntry } from '../types.ts';
+import type { Stock, ProfileState, ToastMessage, NewsHeadline, MarketSentiment, TradeOrder, ActiveOrder, OrderHistoryItem, OHLC, UserProfile, Team, AdminSettings, UnsettledCashItem, MarketEvent, MarketStatus, PerformanceHistoryEntry, MarketControlMode } from '../types.ts';
 import { TradeType, OrderType, OrderStatus } from '../types.ts';
 import {
     DEFAULT_STARTING_CAPITAL, STOCKS_DATA, MARKET_OPEN_DELAY_MS,
@@ -74,6 +73,7 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     const [circuitBreakerTriggered, setCircuitBreakerTriggered] = useState(false);
     const [lastSync, setLastSync] = useState<number | null>(null);
     const [hasInitialSync, setHasInitialSync] = useState(false);
+    const [marketControlMode, setMarketControlMode] = useState<MarketControlMode>('AUTO');
 
     const [adminSettings, setAdminSettings] = useState<AdminSettings>(() => {
         try {
@@ -106,9 +106,8 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
 
     // Firebase Subscriptions for Global State
     useEffect(() => {
-        const unsubStatus = apiClient.subscribeMarketStatus((status) => {
-            setMarketStatus(status);
-        });
+        const unsubscribeMarketStatus = apiClient.subscribeMarketStatus(setMarketStatus);
+        const unsubscribeMode = apiClient.subscribeMarketControlMode(setMarketControlMode);
         const unsubSettings = apiClient.subscribeAdminSettings((settings) => {
             if (settings) {
                 setAdminSettings(settings);
@@ -118,7 +117,8 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
         });
 
         return () => {
-            unsubStatus();
+            unsubscribeMarketStatus();
+            unsubscribeMode();
             unsubSettings();
         };
     }, []);
@@ -700,6 +700,7 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
         isLoaded,
         adminSettings,
         lastSync,
+        marketControlMode,
         syncLiveData: () => {}, // Kept for backwards compatibility but does nothing manually now
     };
 };

@@ -138,6 +138,7 @@ export interface NewsHeadline {
 
 export type MarketSentiment = 'Bullish' | 'Bearish' | 'Neutral';
 
+export type MarketControlMode = 'AUTO' | 'MANUAL';
 export type MarketStatus = 'PRE_MARKET' | 'OPEN' | 'CLOSED' | 'HALTED';
 
 export interface MarketEvent {

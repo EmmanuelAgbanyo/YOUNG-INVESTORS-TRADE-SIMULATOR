@@ -250,6 +250,8 @@ const App: React.FC = () => {
             isAdmin={isAdmin}
             setToast={setToast}
             adminSettings={stockMarket.adminSettings}
+            marketControlMode={stockMarket.marketControlMode}
+            onUpdateMarketControlMode={(mode) => apiClient.updateMarketControlMode(mode)}
             openMarketAdmin={() => stockMarket.marketStatus !== 'OPEN' && apiClient.updateMarketStatus('OPEN')}
             closeMarketAdmin={() => stockMarket.marketStatus === 'OPEN' && apiClient.updateMarketStatus('CLOSED')}
           />

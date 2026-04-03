@@ -39,6 +39,8 @@ interface MarketViewProps {
   isAdmin: boolean;
   setToast: (toast: ToastMessage | null) => void;
   adminSettings: AdminSettings;
+  marketControlMode: 'AUTO' | 'MANUAL';
+  onUpdateMarketControlMode: (mode: 'AUTO' | 'MANUAL') => void;
   openMarketAdmin: () => void;
   closeMarketAdmin: () => void;
 }
@@ -120,7 +122,7 @@ const TabNav: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void; isAdm
 
 const MarketView: React.FC<MarketViewProps> = (props) => {
   // FIX: Destructured the new 'performanceHistory' prop.
-  const { stocks, profile, portfolio, activeOrders, orderHistory, placeOrder, cancelOrder, news, isNewsLoading, fetchNews, marketStatus, activeMarketEvent, isAdmin, setToast, adminSettings, performanceHistory, openMarketAdmin, closeMarketAdmin } = props;
+  const { stocks, profile, portfolio, activeOrders, orderHistory, placeOrder, cancelOrder, news, isNewsLoading, fetchNews, marketStatus, activeMarketEvent, isAdmin, setToast, adminSettings, performanceHistory, openMarketAdmin, closeMarketAdmin, marketControlMode, onUpdateMarketControlMode } = props;
   const [activeTab, setActiveTab] = useState<Tab>('Dashboard');
   const [selectedStockForTrade, setSelectedStockForTrade] = useState<Stock | null>(null);
   const [tradeType, setTradeType] = useState<TradeType>(TradeType.BUY);
@@ -248,7 +250,18 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
       case 'Team':
         return <TeamView profile={profile} orderHistory={orderHistory} />;
       case 'Admin':
-        return isAdmin ? <AdminView stocks={stocks} setToast={setToast} marketStatus={marketStatus} openMarketAdmin={openMarketAdmin} closeMarketAdmin={closeMarketAdmin} adminSettings={adminSettings} /> : null;
+        return isAdmin ? (
+          <AdminView 
+            stocks={stocks} 
+            setToast={setToast} 
+            marketStatus={marketStatus} 
+            openMarketAdmin={openMarketAdmin} 
+            closeMarketAdmin={closeMarketAdmin} 
+            adminSettings={adminSettings}
+            marketControlMode={marketControlMode}
+            onUpdateMarketControlMode={onUpdateMarketControlMode}
+          />
+        ) : null;
       default:
         return null;
     }

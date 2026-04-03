@@ -21,8 +21,11 @@ interface AdminViewProps {
     stocks: Stock[];
     setToast: (toast: ToastMessage | null) => void;
     marketStatus: MarketStatus;
+    marketControlMode: 'AUTO' | 'MANUAL';
+    onUpdateMarketControlMode: (mode: 'AUTO' | 'MANUAL') => void;
     openMarketAdmin: () => void;
     closeMarketAdmin: () => void;
+    adminSettings: AdminSettings;
 }
 
 interface ProfileSummaryData {
@@ -174,6 +177,11 @@ const InfoIcon: React.FC<React.SVGProps<SVGSVGElement> & { title?: string }> = (
         <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
     </svg>
 );
+const ArrowPathIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+  </svg>
+);
 const PlayIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
         <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
@@ -182,6 +190,11 @@ const PlayIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 const StopIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
         <path d="M5.25 3A2.25 2.25 0 003 5.25v9.5A2.25 2.25 0 005.25 17h9.5A2.25 2.25 0 0017 14.75v-9.5A2.25 2.25 0 0014.75 3h-9.5z" />
+    </svg>
+);
+const AdjustmentsIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0m-9.75 0h9.75" />
     </svg>
 );
 
@@ -237,7 +250,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; 
     <Card><div className="flex items-center space-x-4"><div className="p-3 bg-base-300 rounded-lg">{icon}</div><div><div className="text-sm text-base-content/70">{label}</div><div className="text-2xl font-bold text-text-strong">{value}</div></div></div></Card>
 );
 
-const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, openMarketAdmin, closeMarketAdmin }) => {
+const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, marketControlMode, onUpdateMarketControlMode, openMarketAdmin, closeMarketAdmin, adminSettings }) => {
     const [allProfilesData, setAllProfilesData] = useState<ProfileSummaryData[]>([]);
     const [isSyncing, setIsSyncing] = useState(false);
 
@@ -481,9 +494,14 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
                     </div>
 
                     <div className="lg:col-span-1 flex flex-col items-center justify-center h-full p-4 bg-base-200 rounded-lg border border-base-300">
-                        <p className="text-sm font-semibold text-base-content mb-2">Session Control</p>
+                        <div className="flex items-center space-x-2 mb-2">
+                           <p className="text-sm font-semibold text-base-content">Session Control</p>
+                           <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${marketControlMode === 'AUTO' ? 'bg-success/10 text-success border border-success/20' : 'bg-warning/10 text-warning border border-warning/20'}`}>
+                               {marketControlMode}
+                           </div>
+                        </div>
                         <BigMarketClock status={marketStatus} />
-                        <div className="mt-4 w-full">
+                        <div className="mt-4 w-full space-y-2">
                             {(() => {
                                 switch (marketStatus) {
                                     case 'OPEN':
@@ -511,7 +529,24 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, o
                                         return null;
                                 }
                             })()}
+                            
+                            {marketControlMode === 'MANUAL' && (
+                                <Button 
+                                    onClick={() => onUpdateMarketControlMode('AUTO')} 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="w-full flex items-center justify-center text-[10px] opacity-70 hover:opacity-100"
+                                >
+                                    <ArrowPathIcon className="w-3 h-3 mr-1.5" />
+                                    Resume Auto-Sync
+                                </Button>
+                            )}
                         </div>
+                        {marketControlMode === 'MANUAL' && (
+                            <p className="mt-2 text-[10px] text-warning text-center font-medium italic">
+                                Manual Override Active. Scraper will not change market status.
+                            </p>
+                        )}
                     </div>
                  </div>
             </Card>

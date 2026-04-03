@@ -208,9 +208,34 @@ class APIClient {
     });
   }
 
-  async updateMarketStatus(status: MarketStatus) {
+  subscribeMarketControlMode(callback: (mode: MarketControlMode) => void) {
+    const modeRef = ref(database, 'market_control_mode');
+    return onValue(modeRef, (snapshot) => {
+      callback(snapshot.val() || 'AUTO');
+    });
+  }
+
+  async updateMarketControlMode(mode: MarketControlMode) {
     try {
-      await set(ref(database, 'market_status'), status);
+      await set(ref(database, 'market_control_mode'), mode);
+      return true;
+    } catch (err) {
+      console.error("Update market control mode failed:", err);
+      return false;
+    }
+  }
+
+  async updateMarketStatus(status: MarketStatus, updateMode: boolean = true) {
+    try {
+      const updates: any = {
+        'market_status': status
+      };
+      if (updateMode) {
+        updates['market_control_mode'] = 'MANUAL';
+      }
+      
+      const dbRef = ref(database);
+      await update(dbRef, updates);
       return true;
     } catch (err) {
       console.error("Update market status failed:", err);
