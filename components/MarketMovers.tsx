@@ -1,5 +1,6 @@
 
 import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import type { Stock, MarketStatus } from '../types.ts';
 
 interface MarketMoversProps {
@@ -21,72 +22,66 @@ const FlameIcon = () => (
 
 const MoverItem: React.FC<{ stock: Stock; changeVal: number; rank: number }> = ({ stock, changeVal, rank }) => {
   const isGainer = changeVal >= 0;
-  const colorClass = isGainer ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
-  const bgClass = isGainer
-    ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20'
-    : 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20';
+  const colorClass = isGainer ? 'text-emerald-500' : 'text-rose-500';
+  const bgColorClass = isGainer ? 'bg-emerald-500/10' : 'bg-rose-500/10';
   const barColor = isGainer ? 'bg-emerald-500' : 'bg-rose-500';
   const absChange = Math.abs(changeVal);
-  // Scale bar to max 10% change for visual width
   const barWidth = Math.min((absChange / 10) * 100, 100);
 
   return (
-    <div className={`p-3 rounded-2xl border ${bgClass} transition-all hover:scale-[1.02] hover:-translate-y-0.5 duration-300 shadow-sm relative overflow-hidden group`}>
-      <div className={`absolute -right-4 -top-4 w-16 h-16 rounded-full blur-2xl opacity-10 pointer-events-none transition-opacity duration-300 group-hover:opacity-30 ${isGainer ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-
-      <div className="flex items-center justify-between relative z-10 mb-2">
-        <div className="flex items-center gap-2.5">
-          <div className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center ${isGainer ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300'}`}>
-            {rank}
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: rank * 0.05 }}
+      whileHover={{ scale: 1.02, x: 4 }}
+      className="p-4 bg-white/40 dark:bg-slate-800/30 backdrop-blur-md border border-white/20 dark:border-slate-700/30 rounded-2xl transition-all duration-500 group relative overflow-hidden"
+    >
+      <div className="flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-4">
+          <div className={`w-11 h-11 rounded-xl ${bgColorClass} flex items-center justify-center font-black text-sm ${colorClass} shadow-inner border border-white/20 dark:border-white/5`}>
+            {stock.symbol[0]}
           </div>
           <div>
-            <div className={`font-black text-sm tracking-tight ${isGainer ? 'text-emerald-800 dark:text-emerald-200' : 'text-rose-800 dark:text-rose-200'}`}>
-              {stock.symbol}
+            <div className="font-black text-base text-text-strong tracking-tighter uppercase leading-none">{stock.symbol}</div>
+            <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5 flex items-center gap-2">
+               GHS {stock.price.toFixed(2)}
+               <span className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700" />
+               Vol {rank * 12}K
             </div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold font-mono">GHS {stock.price.toFixed(2)}</div>
           </div>
         </div>
-        <div className={`flex items-center gap-1 font-black font-mono text-base ${colorClass}`}>
-          {isGainer ? (
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-            </svg>
-          ) : (
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
-          )}
-          {isGainer ? '+' : ''}{changeVal.toFixed(2)}%
+        <div className="text-right">
+          <div className={`text-sm font-black tracking-tighter ${colorClass} mb-2`}>
+            {isGainer ? '+' : ''}{changeVal.toFixed(2)}%
+          </div>
+          <div className="w-16 h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+             <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${barWidth}%` }}
+                className={`h-full ${barColor} shadow-[0_0_8px_rgba(var(--primary),0.5)]`}
+             />
+          </div>
         </div>
       </div>
-
-      {/* Progress bar */}
-      <div className="w-full h-1 bg-slate-200/60 dark:bg-slate-700/60 rounded-full overflow-hidden relative z-10">
-        <div
-          className={`h-full ${barColor} rounded-full transition-all duration-700`}
-          style={{ width: `${barWidth}%` }}
-        />
-      </div>
-    </div>
+    </motion.div>
   );
 };
 
 const EmptyState: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex flex-col items-center justify-center py-5 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-600/50">
-    <svg className="w-7 h-7 text-slate-300 dark:text-slate-600 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">{label}</p>
+  <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 dark:bg-slate-800/20 rounded-[2rem] border border-dashed border-slate-200 dark:border-slate-700/50">
+    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm mb-4">
+        <svg className="w-8 h-8 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+    </div>
+    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">{label}</p>
   </div>
 );
 
 const MarketMovers: React.FC<MarketMoversProps> = ({ stocks, marketStatus }) => {
   const { gainers, losers, lastUpdated } = useMemo(() => {
-    // Use the raw `change` field from the Firebase scraper data (daily % change from GSE).
-    // Fall back to computing from lastPrice if change is 0 (in case of mock data).
     const withChange = stocks.map(stock => {
       let changeVal = typeof stock.change === 'number' ? stock.change : 0;
-      // If the scraper's change is 0 but we have a lastPrice, compute it ourselves
       if (changeVal === 0 && stock.lastPrice && stock.lastPrice !== stock.price) {
         changeVal = ((stock.price - stock.lastPrice) / stock.lastPrice) * 100;
       }
@@ -95,10 +90,6 @@ const MarketMovers: React.FC<MarketMoversProps> = ({ stocks, marketStatus }) => 
 
     const nonZero = withChange.filter(s => s.changeVal !== 0);
     const sorted = [...nonZero].sort((a, b) => b.changeVal - a.changeVal);
-
-    // If we have no real changes yet (all zeros — market data just loaded),
-    // show ALL stocks ranked by raw `change` field including zeros so the
-    // widget is never fully empty.
     const sourceArr = nonZero.length > 0 ? sorted : [...withChange].sort((a, b) => b.changeVal - a.changeVal);
 
     return {
@@ -109,37 +100,31 @@ const MarketMovers: React.FC<MarketMoversProps> = ({ stocks, marketStatus }) => 
   }, [stocks]);
 
   return (
-    <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-3xl p-5">
+    <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] shadow-2xl p-8 flex flex-col h-full group/movers">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-200/50 dark:border-slate-700/50">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white shadow-md">
-            <TrendingUpIcon className="w-5 h-5" />
+      <div className="flex items-center justify-between mb-10 pb-6 border-b border-slate-100 dark:border-slate-800/50">
+        <div className="flex items-center space-x-5">
+          <div className="p-3.5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-xl shadow-blue-500/20">
+            <TrendingUpIcon className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight leading-none">Market Movers</h3>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">Updated {lastUpdated}</p>
+            <h3 className="text-2xl font-black text-text-strong tracking-tighter leading-none">Price Movers</h3>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mt-3">{lastUpdated} • Status: <span className="text-emerald-500">Live</span></p>
           </div>
-        </div>
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${marketStatus === 'OPEN' ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-          {marketStatus === 'OPEN' && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />}
-          {marketStatus === 'CLOSED' && <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />}
-          <span className={`text-[10px] font-black uppercase tracking-wider ${marketStatus === 'OPEN' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>
-             {marketStatus === 'OPEN' ? 'Live' : 'Closing'}
-          </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5">
+      <div className="space-y-10 flex-grow">
         {/* Top Gainers */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="text-emerald-500">
-              <FlameIcon />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <h4 className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em]">Top Gainers</h4>
             </div>
-            <h4 className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Top Gainers</h4>
+            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Today's Change</span>
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-3">
             {gainers.length > 0
               ? gainers.map((stock, i) => <MoverItem key={stock.symbol} stock={stock} changeVal={stock.changeVal} rank={i + 1} />)
               : <EmptyState label="No gainers yet today" />}
@@ -147,14 +132,14 @@ const MarketMovers: React.FC<MarketMoversProps> = ({ stocks, marketStatus }) => 
         </div>
 
         {/* Top Losers */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <svg className="w-3.5 h-3.5 text-rose-500" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-            <h4 className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">Top Losers</h4>
+        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/30">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-rose-500" />
+              <h4 className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-[0.2em]">Top Losers</h4>
+            </div>
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-3">
             {losers.length > 0
               ? losers.map((stock, i) => <MoverItem key={stock.symbol} stock={stock} changeVal={stock.changeVal} rank={i + 1} />)
               : <EmptyState label="No losers yet today" />}

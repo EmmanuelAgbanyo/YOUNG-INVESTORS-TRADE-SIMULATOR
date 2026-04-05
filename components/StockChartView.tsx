@@ -38,43 +38,45 @@ const StockChartView: React.FC<StockChartViewProps> = ({ stock, analystSession, 
 
     if (!stock) {
         return (
-            <Card className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center text-base-content/70">
-                    <ChartLineIcon className="w-12 h-12 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-text-strong">Stock Analysis</h3>
-                    <p>Select a stock in the trade form to view its chart and AI analysis.</p>
+            <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] p-12 shadow-2xl flex flex-col items-center justify-center min-h-[500px] text-center space-y-6">
+                <div className="w-20 h-20 rounded-3xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center border border-slate-100 dark:border-slate-700/50 shadow-inner">
+                    <ChartLineIcon className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                 </div>
-            </Card>
+                <div className="space-y-2">
+                    <h3 className="text-2xl font-black text-text-strong tracking-tighter uppercase">Stock Chart</h3>
+                    <p className="text-sm font-bold text-slate-400 max-w-xs mx-auto leading-relaxed">Select a stock from the Trade panel to view its chart and AI analysis.</p>
+                </div>
+            </div>
         );
     }
 
-    const { priceHistory, price, lastPrice = price } = stock;
+    const { priceHistory = [], price, lastPrice = price } = stock;
     const priceChange = price - lastPrice;
     const percentChange = lastPrice > 0 ? (priceChange / lastPrice) * 100 : 0;
     const isPositive = priceChange >= 0;
 
-    const successColorRGB = 'var(--success)';
-    const errorColorRGB = 'var(--error)';
-    const color = isPositive ? successColorRGB : errorColorRGB;
+    const colorClass = isPositive ? 'text-emerald-500' : 'text-rose-500';
+    const bgColorClass = isPositive ? 'bg-emerald-500/10' : 'bg-rose-500/10';
+    const strokeColor = isPositive ? '#10b981' : '#f43f5e';
 
     // Chart dimensions
-    const width = 500;
-    const height = 200;
-    const padding = 20;
+    const width = 600;
+    const height = 240;
+    const padding = 30;
 
-    const allPrices = priceHistory.flatMap(p => [p.high, p.low]);
+    const allPrices = priceHistory.length > 0 ? priceHistory.flatMap(p => [p.high, p.low]) : [price, price];
     const maxPrice = Math.max(...allPrices);
     const minPrice = Math.min(...allPrices);
     const priceRange = maxPrice - minPrice || 1;
 
-    const candleWidth = (width - 2 * padding) / (priceHistory.length || 1);
+    const candleWidth = (width - 2 * padding) / Math.max(priceHistory.length, 1);
 
     const handleMouseMove = (event: React.MouseEvent<SVGRectElement>) => {
         const svg = event.currentTarget;
         const rect = svg.getBoundingClientRect();
         const x = event.clientX - rect.left;
 
-        const index = Math.floor((x - padding) / candleWidth);
+        const index = Math.floor((x - padding) / (candleWidth || 1));
 
         if (index >= 0 && index < priceHistory.length) {
             const ohlc = priceHistory[index];
@@ -90,100 +92,120 @@ const StockChartView: React.FC<StockChartViewProps> = ({ stock, analystSession, 
         setTooltipData(null);
     };
 
-    const formatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' });
-
     return (
-        <Card>
-            <div className="flex flex-wrap justify-between items-start mb-4">
-                <div>
-                    <h3 className="text-2xl font-bold text-text-strong">{stock.name} ({stock.symbol})</h3>
-                    <p className={`font-semibold text-sm ${marketStatus === 'OPEN' ? 'text-emerald-500' : 'text-slate-500'}`}>
-                        {marketStatus === 'OPEN' ? 'Live Price Chart' : 'Closing Price Chart'}
-                    </p>
+        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] p-1 shadow-2xl flex flex-col h-full overflow-hidden">
+            <div className="p-8 pb-4">
+                <div className="flex flex-wrap justify-between items-start mb-8 pb-6 border-b border-slate-100 dark:border-slate-800/50">
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 rounded-lg bg-blue-600 text-[10px] font-black text-white uppercase tracking-widest leading-none">Stock Chart</span>
+                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg ${marketStatus === 'OPEN' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-50 dark:bg-slate-800 text-slate-500'}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${marketStatus === 'OPEN' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{marketStatus}</span>
+                            </div>
+                        </div>
+                        <h3 className="text-3xl font-black text-text-strong tracking-tighter leading-none">{stock.name} <span className="text-slate-400 font-bold ml-2">({stock.symbol})</span></h3>
+                    </div>
+                    <div className="text-right">
+                        <p className={`text-4xl font-black font-mono tracking-tighter leading-none ${colorClass}`}>{price.toFixed(2)}</p>
+                        <p className={`text-sm font-black font-mono mt-3 ${colorClass}`}>
+                            {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({percentChange.toFixed(2)}%)
+                        </p>
+                    </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-3xl font-mono font-bold" style={{ color: `rgb(${color})` }}>{price.toFixed(2)}</p>
-                    <p className="font-mono font-semibold" style={{ color: `rgb(${color})` }}>
-                        {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({percentChange.toFixed(2)}%)
-                    </p>
-                </div>
-            </div>
 
-            <div className="w-full h-auto mb-6 relative group/chart">
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto drop-shadow-lg" preserveAspectRatio="xMidYMid meet">
-                    <defs>
-                        <filter id="candle-glow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                            <feMerge>
-                                <feMergeNode in="coloredBlur" />
-                                <feMergeNode in="SourceGraphic" />
-                            </feMerge>
-                        </filter>
-                    </defs>
-                    {priceHistory.map((ohlc, i) => {
-                        const x = padding + i * candleWidth;
-                        const yOpen = height - padding - ((ohlc.open - minPrice) / priceRange * (height - 2 * padding));
-                        const yClose = height - padding - ((ohlc.close - minPrice) / priceRange * (height - 2 * padding));
-                        const yHigh = height - padding - ((ohlc.high - minPrice) / priceRange * (height - 2 * padding));
-                        const yLow = height - padding - ((ohlc.low - minPrice) / priceRange * (height - 2 * padding));
+                <div className="w-full h-auto mb-8 relative group/chart bg-slate-50/30 dark:bg-slate-900/30 rounded-[2rem] p-6 border border-slate-100/50 dark:border-slate-800/50 shadow-inner">
+                    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <filter id="candle-glow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="3" result="glow" />
+                                <feComposite in="glow" in2="SourceGraphic" operator="over" />
+                            </filter>
+                        </defs>
+                        
+                        {/* Grid Lines */}
+                        {[0, 1, 2, 3, 4].map(i => (
+                            <line 
+                              key={i}
+                              x1={padding} y1={padding + (height - 2 * padding) * (i / 4)}
+                              x2={width - padding} y2={padding + (height - 2 * padding) * (i / 4)}
+                              stroke="currentColor" className="text-slate-200 dark:text-slate-800 opacity-30"
+                              strokeWidth="1"
+                            />
+                        ))}
 
-                        const isGain = ohlc.close >= ohlc.open;
+                        {priceHistory.map((ohlc, i) => {
+                            const x = padding + i * candleWidth;
+                            const yOpen = height - padding - ((ohlc.open - minPrice) / priceRange * (height - 2 * padding));
+                            const yClose = height - padding - ((ohlc.close - minPrice) / priceRange * (height - 2 * padding));
+                            const yHigh = height - padding - ((ohlc.high - minPrice) / priceRange * (height - 2 * padding));
+                            const yLow = height - padding - ((ohlc.low - minPrice) / priceRange * (height - 2 * padding));
 
-                        return (
-                            <g key={i} filter="url(#candle-glow)" className="transition-all duration-300 hover:opacity-80 cursor-crosshair">
-                                <line x1={x + candleWidth / 2} y1={yHigh} x2={x + candleWidth / 2} y2={yLow} stroke={isGain ? `rgb(${successColorRGB})` : `rgb(${errorColorRGB})`} strokeWidth="1.5" />
-                                <rect
-                                    x={x + 2}
-                                    y={Math.min(yOpen, yClose)}
-                                    width={candleWidth - 4}
-                                    height={Math.abs(yOpen - yClose) || 0.5}
-                                    fill={isGain ? `rgb(${successColorRGB})` : `rgb(${errorColorRGB})`}
-                                    rx="1"
+                            const isGain = ohlc.close >= ohlc.open;
+                            const candleColor = isGain ? '#10b981' : '#f43f5e';
+
+                            return (
+                                <g key={i} className="transition-all duration-300 hover:opacity-80 cursor-crosshair group/candle">
+                                    <line 
+                                      x1={x + candleWidth / 2} y1={yHigh} 
+                                      x2={x + candleWidth / 2} y2={yLow} 
+                                      stroke={candleColor} strokeWidth="1.5" 
+                                    />
+                                    <rect
+                                        x={x + (candleWidth * 0.15)}
+                                        y={Math.min(yOpen, yClose)}
+                                        width={candleWidth * 0.7}
+                                        height={Math.max(1, Math.abs(yOpen - yClose))}
+                                        fill={candleColor}
+                                        className="group-hover/candle:filter group-hover/candle:brightness-125"
+                                        rx="2"
+                                    />
+                                </g>
+                            );
+                        })}
+
+                        {tooltipData && (
+                            <g className="pointer-events-none transition-all duration-100 ease-out">
+                                <line
+                                    x1={tooltipData.x} y1={padding}
+                                    x2={tooltipData.x} y2={height - padding}
+                                    stroke="currentColor" className="text-blue-500/30"
+                                    strokeWidth="2"
+                                    strokeDasharray="4 4"
                                 />
+                                <circle cx={tooltipData.x} cy={tooltipData.y} r="4" fill="#3b82f6" className="shadow-lg" />
                             </g>
-                        );
-                    })}
+                        )}
+
+                        <rect
+                            x="0" y="0" width={width} height={height}
+                            fill="transparent"
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={handleMouseLeave}
+                        />
+                    </svg>
 
                     {tooltipData && (
-                        <g className="pointer-events-none transition-all duration-100 ease-out">
-                            <line
-                                x1={tooltipData.x} y1={padding}
-                                x2={tooltipData.x} y2={height - padding}
-                                stroke="currentColor" className="text-slate-400 dark:text-slate-500"
-                                strokeWidth="1"
-                                strokeDasharray="4 4"
-                            />
-                        </g>
-                    )}
-
-                    <rect
-                        x="0" y="0" width={width} height={height}
-                        fill="transparent"
-                        onMouseMove={handleMouseMove}
-                        onMouseLeave={handleMouseLeave}
-                    />
-                </svg>
-
-                {tooltipData && (
-                    <div
-                        className="absolute p-3 text-sm rounded-xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 shadow-2xl pointer-events-none transition-all duration-100 ease-out z-50"
-                        style={{
-                            left: tooltipData.x + 10,
-                            top: tooltipData.y - 40,
-                            transform: `translateX(${tooltipData.x > width / 2 ? '-110%' : '10%'})`,
-                        }}
-                    >
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-slate-800 dark:text-white font-bold">
-                            <span className="text-slate-500 uppercase text-xs">Open:</span> <span className="text-right">{tooltipData.ohlc.open.toFixed(2)}</span>
-                            <span className="text-slate-500 uppercase text-xs">High:</span> <span className="text-right text-emerald-500">{tooltipData.ohlc.high.toFixed(2)}</span>
-                            <span className="text-slate-500 uppercase text-xs">Low:</span> <span className="text-right text-rose-500">{tooltipData.ohlc.low.toFixed(2)}</span>
-                            <span className="text-slate-500 uppercase text-xs">Close:</span> <span className="text-right font-black">{tooltipData.ohlc.close.toFixed(2)}</span>
+                        <div
+                            className="absolute p-5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-blue-500/20 shadow-2xl pointer-events-none transition-all duration-100 ease-out z-50"
+                            style={{
+                                left: tooltipData.x + 20,
+                                top: 20,
+                                transform: `translateX(${tooltipData.x > width / 2 ? 'calc(-100% - 40px)' : '0'})`,
+                            }}
+                        >
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-text-strong font-black">
+                                <span className="text-[10px] text-slate-400 uppercase tracking-widest">Open:</span> <span className="text-right text-sm">{tooltipData.ohlc.open.toFixed(2)}</span>
+                                <span className="text-[10px] text-slate-400 uppercase tracking-widest">High:</span> <span className="text-right text-sm text-emerald-500">{tooltipData.ohlc.high.toFixed(2)}</span>
+                                <span className="text-[10px] text-slate-400 uppercase tracking-widest">Low:</span> <span className="text-right text-sm text-rose-500">{tooltipData.ohlc.low.toFixed(2)}</span>
+                                <span className="text-[10px] text-slate-400 uppercase tracking-widest">Close:</span> <span className="text-right text-sm text-blue-600">{tooltipData.ohlc.close.toFixed(2)}</span>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
-            <div id="ai-analyst-view">
+            <div id="ai-analyst-view" className="mt-auto border-t border-slate-100 dark:border-slate-800/50">
                 <AIAnalystTerminal
                     stock={stock}
                     session={analystSession}
@@ -191,7 +213,7 @@ const StockChartView: React.FC<StockChartViewProps> = ({ stock, analystSession, 
                     onSendMessage={onSendMessage}
                 />
             </div>
-        </Card>
+        </div>
     );
 };
 

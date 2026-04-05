@@ -3,6 +3,7 @@
 
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import type { Holding, Stock } from '../types.ts';
 import Card from './ui/Card.tsx';
 import EmptyState from './ui/EmptyState.tsx';
@@ -13,14 +14,14 @@ interface PortfolioAllocationChartProps {
 }
 
 const COLORS = [
-  '#3b82f6', // primary (blue)
-  '#8b5cf6', // secondary (violet)
-  '#10b981', // accent (emerald)
-  '#0ea5e9', // sky
-  '#14b8a6', // teal
-  '#f97316', // orange
-  '#ec4899', // pink
-  '#a855f7', // purple
+  '#2563eb', // primary blue
+  '#4f46e5', // indigo
+  '#7c3ae6', // violet
+  '#0d9488', // teal
+  '#059669', // emerald
+  '#db2777', // pink
+  '#ea580c', // orange
+  '#475569', // slate
 ];
 
 const ChartPieIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -108,8 +109,22 @@ const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> = ({ hol
 
 
   return (
-    <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 sm:p-8 rounded-3xl h-full flex flex-col transition-all duration-300">
-      <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight mb-8">Portfolio Allocation</h3>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] shadow-2xl p-6 sm:p-8 h-full flex flex-col transition-all duration-300"
+    >
+      <div className="flex items-center justify-between mb-8 pb-5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center space-x-4">
+          <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[1.25rem] text-white shadow-lg shadow-indigo-500/20">
+            <ChartPieIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-text-strong tracking-tighter leading-none">Capital Structure</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1.5">Sector Allocation Analysis</p>
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center flex-grow">
         <div className="relative w-full aspect-square max-h-72 flex flex-col items-center justify-center mx-auto">
           <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-xl overflow-visible">
@@ -132,31 +147,37 @@ const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> = ({ hol
             ))}
           </svg>
           {/* Floating Centered Value */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Value</span>
-            <span className="text-2xl lg:text-3xl font-black text-slate-800 dark:text-white font-mono tracking-tighter drop-shadow-sm">{formatter.format(totalHoldingsValue)}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-1">Total Valuation</span>
+            <span className="text-2xl lg:text-3xl font-black text-text-strong tracking-tighter">{formatter.format(totalHoldingsValue)}</span>
           </div>
         </div>
 
-        <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar pr-3">
+        <div className="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
           {chartData.map((item, index) => (
-            <div key={item.symbol} className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/80 dark:hover:bg-slate-800/80 transition-all duration-300 border border-transparent hover:border-white/50 dark:hover:border-slate-600 shadow-sm hover:shadow-md cursor-pointer group hover:-translate-y-0.5">
+            <motion.div 
+              key={item.symbol} 
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="flex items-center justify-between p-4 rounded-2xl bg-white/40 dark:bg-slate-800/20 border border-white/20 dark:border-slate-800/20 shadow-sm hover:shadow-xl transition-all duration-300 group cursor-pointer"
+            >
               <div className="flex items-center min-w-0 flex-1 mr-4">
-                <div className="w-4 h-4 rounded-full mr-3 shrink-0 shadow-[0_0_10px_rgba(0,0,0,0.2)] border border-white/30 transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                <div className="w-3 h-3 rounded-full mr-4 shrink-0 shadow-lg" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
                 <div className="truncate">
-                  <div className="font-bold text-slate-800 dark:text-white tracking-wide">{item.symbol}</div>
-                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">{item.name}</div>
+                  <div className="font-black text-sm text-text-strong tracking-tight uppercase leading-none">{item.symbol}</div>
+                  <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5">{item.name}</div>
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <div className="font-black font-mono text-slate-800 dark:text-white group-hover:scale-105 transition-transform origin-right text-sm">{item.percentage.toFixed(2)}%</div>
-                <div className="font-semibold font-mono text-xs text-slate-500 dark:text-slate-400">{formatter.format(item.value)}</div>
+                <div className="font-black text-sm text-text-strong">{item.percentage.toFixed(1)}%</div>
+                <div className="font-bold text-[10px] text-slate-400 mt-1">{formatter.format(item.value)}</div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

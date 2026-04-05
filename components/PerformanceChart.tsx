@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Card from './ui/Card.tsx';
 import EmptyState from './ui/EmptyState.tsx';
 import type { PerformanceHistoryEntry } from '../types.ts';
@@ -54,9 +55,10 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ history, startingCa
         const areaPoints = `${xScale(0)},${height - padding.bottom} ${points} ${xScale(history.length - 1)},${height - padding.bottom}`;
         const areaPath = `M${areaPoints}`;
 
-        const calculatedStartingCapitalY = yScale(startingCapital);
+        const calculatedStartingCapitalY = isNaN(yScale(startingCapital)) ? padding.top + chartHeight / 2 : yScale(startingCapital);
         const breakEvenLineY = calculatedStartingCapitalY;
-        const breakEvenOffset = (breakEvenLineY - padding.top) / chartHeight;
+        const breakEvenOffsetVal = (breakEvenLineY - padding.top) / (chartHeight || 1);
+        const breakEvenOffset = isNaN(breakEvenOffsetVal) ? 0.5 : Math.max(0, Math.min(1, breakEvenOffsetVal));
 
         const numLabels = 5;
         const yAxisLabels = Array.from({ length: numLabels }, (_, i) => {
@@ -108,8 +110,25 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ history, startingCa
     }
 
     return (
-        <Card>
-            <h3 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight mb-4 flex items-center"><ChartBarIcon className="w-6 h-6 mr-2 text-indigo-500" /> Performance Over Time</h3>
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] shadow-2xl p-6 sm:p-8"
+        >
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[1.25rem] text-white shadow-lg shadow-blue-500/20">
+                        <ChartBarIcon className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-text-strong tracking-tighter leading-none">Portfolio Alpha</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1.5">Historical Performance Index</p>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Global Standard • 24H</span>
+                </div>
+            </div>
             <div className="relative group/chart">
                 <svg viewBox={`0 0 ${chartConfig.width} ${chartConfig.height}`} className="w-full h-auto drop-shadow-2xl" onMouseMove={handleMouseMove} onMouseLeave={() => setTooltipData(null)}>
                     <defs>
@@ -121,10 +140,10 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ history, startingCa
                             </feMerge>
                         </filter>
                         <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="rgb(var(--success))" />
-                            <stop offset={breakEvenOffset} stopColor="rgb(var(--success))" />
-                            <stop offset={breakEvenOffset} stopColor="rgb(var(--error))" />
-                            <stop offset="100%" stopColor="rgb(var(--error))" />
+                            <stop offset="0%" stopColor="rgb(var(--primary))" stopOpacity="0.6" />
+                            <stop offset={breakEvenOffset} stopColor="rgb(var(--primary))" stopOpacity="0.1" />
+                            <stop offset={breakEvenOffset} stopColor="rgb(var(--error))" stopOpacity="0.1" />
+                            <stop offset="100%" stopColor="rgb(var(--error))" stopOpacity="0.6" />
                         </linearGradient>
                         <mask id="areaMask">
                             <path d={areaPath} fill="white" />
@@ -134,13 +153,15 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ history, startingCa
                     {/* Y-Axis Grid Lines & Labels */}
                     {yAxisLabels.map((label, i) => (
                         <g key={i}>
-                            <line x1={chartConfig.padding.left} y1={label.y} x2={chartConfig.width - chartConfig.padding.right} y2={label.y} stroke="rgb(var(--base-300))" strokeWidth="0.5" />
-                            <text x={chartConfig.padding.left - 8} y={label.y + 4} textAnchor="end" fontSize="10" fill="rgb(var(--base-content))" className="font-mono">{formatter.format(label.value).replace('GHS', '')}</text>
+                            <line x1={chartConfig.padding.left} y1={label.y} x2={chartConfig.width - chartConfig.padding.right} y2={label.y} stroke="rgb(var(--base-300))" strokeWidth="0.5" strokeDasharray="2 4" />
+                            <text x={chartConfig.padding.left - 12} y={label.y + 4} textAnchor="end" fontSize="10" fill="rgb(var(--base-content))" className="font-mono font-bold opacity-60">
+                                {formatter.format(label.value || 0).replace('GH₵', '').replace('GHS', '').trim()}
+                            </text>
                         </g>
                     ))}
 
                     {/* Gradient Fill - animated fading up */}
-                    <rect className="animate-fade-in-up duration-1000" x={chartConfig.padding.left} y={chartConfig.padding.top} width={chartConfig.width - chartConfig.padding.left - chartConfig.padding.right} height={chartConfig.height - chartConfig.padding.top - chartConfig.padding.bottom} fill="url(#pnlGradient)" mask="url(#areaMask)" opacity={0.3} />
+                    <rect className="animate-fade-in-up duration-1000" x={chartConfig.padding.left} y={chartConfig.padding.top} width={chartConfig.width - chartConfig.padding.left - chartConfig.padding.right} height={chartConfig.height - chartConfig.padding.top - chartConfig.padding.bottom} fill="url(#pnlGradient)" mask="url(#areaMask)" />
 
                     {/* Starting Capital Line */}
                     {/* FIX: Used 'startingCapitalY' from useMemo to prevent 'yScale' not defined error. */}
@@ -170,18 +191,28 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ history, startingCa
                     )}
                 </svg>
                 {tooltipData && (
-                    <div className="absolute p-3 text-sm rounded-xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 shadow-2xl pointer-events-none transition-all duration-100 ease-out z-50" style={{ left: tooltipData.x, top: chartConfig.padding.top / 2, transform: `translateX(${tooltipData.x > chartConfig.width / 2 ? '-110%' : '10%'})` }}>
-                        <div className="font-mono text-center flex flex-col gap-1">
-                            <p className="font-black text-lg text-slate-800 dark:text-white drop-shadow-sm">{formatter.format(tooltipData.value)}</p>
-                            <div className="flex justify-between gap-4 font-bold text-xs uppercase tracking-wider">
-                                <span className={tooltipData.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}>{tooltipData.pnl >= 0 ? '+' : ''}{formatter.format(tooltipData.pnl)}</span>
-                                <span className="text-slate-500">{new Date(tooltipData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-white/50 dark:border-slate-700/50 shadow-2xl pointer-events-none transition-all duration-100 ease-out z-50 min-w-[160px]" 
+                        style={{ left: tooltipData.x, top: chartConfig.padding.top / 2, transform: `translateX(${tooltipData.x > chartConfig.width / 2 ? '-110%' : '10%'})` }}
+                    >
+                        <div className="flex flex-col space-y-2">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(tooltipData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                            <p className="font-black text-xl text-text-strong tracking-tighter">GH₵{tooltipData.value.toLocaleString()}</p>
+                            <div className="flex items-center space-x-2">
+                                <span className={`text-xs font-black px-2 py-1 rounded-lg ${tooltipData.pnl >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                    {tooltipData.pnl >= 0 ? '+' : ''}{!isNaN(tooltipData.pnl / startingCapital) ? ((tooltipData.pnl / startingCapital) * 100).toFixed(2) : '0.00'}%
+                                </span>
+                                <span className={`text-[10px] font-bold ${tooltipData.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    {tooltipData.pnl >= 0 ? '+' : ''}GH₵{Math.abs(tooltipData.pnl).toLocaleString()}
+                                </span>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
             </div>
-        </Card>
+        </motion.div>
     );
 };
 

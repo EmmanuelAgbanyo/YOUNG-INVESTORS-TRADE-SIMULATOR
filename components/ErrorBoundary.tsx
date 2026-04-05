@@ -6,6 +6,8 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  errorMessage: string;
+  errorStack: string;
 }
 
 const AlertTriangleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -18,41 +20,70 @@ const AlertTriangleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 // FIX: Removed 'public' access modifiers from class methods and properties to resolve property access error and align with common conventions.
 class ErrorBoundary extends Component<Props, State> {
   state: State = {
-    hasError: false
+    hasError: false,
+    errorMessage: '',
+    errorStack: '',
   };
 
-  static getDerivedStateFromError(_: Error): State {
-    // Update state so the next render will show the fallback UI.
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): State {
+    return {
+      hasError: true,
+      errorMessage: error?.message || 'Unknown error',
+      errorStack: error?.stack || '',
+    };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // You can also log the error to an error reporting service
-    console.error("Uncaught error:", error, errorInfo);
+    console.error("[ErrorBoundary] Uncaught error:", error.message);
+    console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
+    console.error("[ErrorBoundary] Error stack:", error.stack);
   }
 
   render() {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
       return (
-        <div className="min-h-screen bg-base-100 text-base-content flex items-center justify-center p-4">
-            <div className="w-full max-w-md text-center">
-                <div className="flex justify-center mb-4">
-                    <div className="p-4 bg-error/10 rounded-full">
-                        <AlertTriangleIcon className="w-12 h-12 text-error" />
+        <div className="min-h-screen bg-[#060918] text-slate-200 flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl">
+                <div className="bg-slate-900/80 backdrop-blur-xl border border-rose-500/30 rounded-3xl p-10 shadow-2xl shadow-rose-900/30">
+                    <div className="flex justify-center mb-6">
+                        <div className="p-5 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                            <AlertTriangleIcon className="w-14 h-14 text-rose-400" />
+                        </div>
                     </div>
-                </div>
-                <h1 className="text-3xl font-bold text-text-strong">Oops! Something went wrong.</h1>
-                <p className="text-base-content/80 mt-2">
-                    An unexpected error occurred within the application. We've logged the issue for our team to review.
-                </p>
-                <div className="mt-6">
-                    <button 
-                        className="btn btn-primary" 
-                        onClick={() => window.location.reload()}
-                    >
-                        Refresh Page
-                    </button>
+                    <h1 className="text-3xl font-black text-white text-center tracking-tight mb-2">Component Crashed</h1>
+                    <p className="text-slate-400 text-center text-sm font-medium mb-8">
+                        A rendering error occurred in this section of the application.
+                    </p>
+
+                    {/* Error Detail Panel */}
+                    {this.state.errorMessage && (
+                        <div className="mb-6 bg-rose-950/50 border border-rose-500/20 rounded-2xl p-5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-rose-400 mb-2">Error Message</p>
+                            <p className="text-sm font-mono text-rose-200 break-all">{this.state.errorMessage}</p>
+                        </div>
+                    )}
+
+                    {this.state.errorStack && (
+                        <details className="mb-6 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 cursor-pointer">
+                            <summary className="text-[10px] font-black uppercase tracking-widest text-slate-400 select-none">Stack Trace</summary>
+                            <pre className="mt-3 text-[10px] font-mono text-slate-400 overflow-auto max-h-40 whitespace-pre-wrap break-all">{this.state.errorStack}</pre>
+                        </details>
+                    )}
+
+                    <div className="flex gap-3">
+                        <button
+                            className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-900/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+                            onClick={() => window.location.reload()}
+                        >
+                            Refresh App
+                        </button>
+                        <button
+                            className="flex-1 py-4 rounded-2xl bg-slate-800 border border-slate-700 text-slate-300 font-black text-sm uppercase tracking-widest hover:bg-slate-700 transition-all duration-300"
+                            onClick={() => this.setState({ hasError: false, errorMessage: '', errorStack: '' })}
+                        >
+                            Try Again
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -63,4 +94,4 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default ErrorBoundary;
+export default ErrorBoundary;

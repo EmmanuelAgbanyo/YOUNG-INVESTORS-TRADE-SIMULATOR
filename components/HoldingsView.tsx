@@ -2,6 +2,7 @@
 
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import type { Holding, Stock, OHLC } from '../types.ts';
 import { TradeType } from '../types.ts';
 import Button from './ui/Button.tsx';
@@ -15,9 +16,9 @@ const BriefcaseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
-const Sparkline: React.FC<{ history: OHLC[]; color: string; width?: number; height?: number }> = ({ history, color, width = 100, height = 40 }) => {
+const Sparkline: React.FC<{ history: OHLC[]; color: string; width?: number; height?: number }> = ({ history, color, width = 120, height = 48 }) => {
     const prices = history.map(p => p.close);
-    if (prices.length < 2) return <div style={{ width, height }} className="flex items-center justify-center text-xs text-base-content/50">...</div>;
+    if (prices.length < 2) return <div style={{ width, height }} className="flex items-center justify-center text-[10px] text-slate-400">...</div>;
 
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
@@ -25,16 +26,30 @@ const Sparkline: React.FC<{ history: OHLC[]; color: string; width?: number; heig
 
     const points = prices.map((price, i) => {
         const x = (i / (prices.length - 1)) * width;
-        const y = height - ((price - minPrice) / priceRange) * height;
+        const y = height - ((price - minPrice) / priceRange) * height - 2; // Offset for stroke
         return `${x},${y}`;
     }).join(' ');
 
+    const fillPoints = `${points} ${width},${height} 0,${height}`;
+
+    const gradientId = `gradient-${color.replace('#', '')}`;
+
     return (
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+            <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={color} stopOpacity="0" />
+                </linearGradient>
+            </defs>
+            <polyline
+                fill={`url(#${gradientId})`}
+                points={fillPoints}
+            />
             <polyline
                 fill="none"
                 stroke={color}
-                strokeWidth="2"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 points={points}
@@ -46,70 +61,108 @@ const Sparkline: React.FC<{ history: OHLC[]; color: string; width?: number; heig
 
 interface HoldingCardProps {
     holdingData: any;
+    totalPortfolioValue: number;
     onTradeAction: (stock: Stock, type: TradeType) => void;
 }
 
-const HoldingCard: React.FC<HoldingCardProps> = ({ holdingData, onTradeAction }) => {
+const HoldingCard: React.FC<HoldingCardProps> = ({ holdingData, totalPortfolioValue, onTradeAction }) => {
     const { stock, quantity, value, avgCost, totalPnl, totalPnlPercent, todayPnl, todayPnlPercent } = holdingData;
-    const formatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' });
-
+    const formatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS', minimumFractionDigits: 2 });
+    
     if (!stock) return null;
 
+    const portfolioShare = (value / totalPortfolioValue) * 100;
     const isTodayPositive = todayPnl >= 0;
     const isTotalPositive = totalPnl >= 0;
-    const todayColorClass = isTodayPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
-    const totalColorClass = isTotalPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+    const todayColor = isTodayPositive ? 'text-emerald-500' : 'text-rose-500';
+    const totalColor = isTotalPositive ? 'text-emerald-500' : 'text-rose-500';
+    const chartColor = isTodayPositive ? '#10b981' : '#f43f5e';
 
     return (
-        <div className={`flex flex-col justify-between p-5 bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-3xl transition-all duration-500 hover:-translate-y-1 relative overflow-hidden group ${isTotalPositive ? 'hover:shadow-[0_12px_40px_rgba(16,185,129,0.2)]' : 'hover:shadow-[0_12px_40px_rgba(244,63,94,0.2)]'}`}>
-            <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none ${isTotalPositive ? 'from-emerald-400 to-transparent' : 'from-rose-400 to-transparent'}`}></div>
-            {/* Top section: Symbol, Name, Sparkline */}
-            <div className="flex justify-between items-start mb-4 relative z-10">
-                <div>
-                    <div className="font-black text-xl text-slate-800 dark:text-white tracking-tight">{stock.symbol}</div>
-                    <div className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{stock.name}</div>
-                </div>
-                <div className="w-24 h-10 opacity-80 mix-blend-multiply dark:mix-blend-screen">
-                    <Sparkline history={stock.priceHistory} color={stock.price >= (stock.lastPrice ?? stock.price) ? '#10b981' : '#f43f5e'} />
-                </div>
-            </div>
+        <motion.div 
+            layout
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ y: -4 }}
+            className="group relative bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/40 dark:border-slate-800/40 p-5 rounded-[2rem] shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300"
+        >
+            {/* Glossy top-left highlight */}
+            <div className="absolute -top-12 -left-12 w-32 h-32 bg-white/20 dark:bg-slate-800/20 rounded-full blur-3xl pointer-events-none" />
 
-            {/* Middle section: Market Value, Today's P&L */}
-            <div className="flex justify-between items-end mb-5 relative z-10">
-                <div>
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Market Value</div>
-                    <div className="text-2xl font-black text-slate-800 dark:text-white font-mono tracking-tight">{formatter.format(value)}</div>
-                    <div className="text-xs font-semibold font-mono text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 inline-block px-2 py-0.5 rounded-md mt-1">{quantity.toLocaleString()} shares @ {formatter.format(avgCost)}</div>
+            {/* Header: Identity and Momentum */}
+            <div className="flex justify-between items-start mb-6 relative z-10">
+                <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 flex-shrink-0 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center font-black text-xl text-text-strong shadow-inner">
+                        {stock.symbol[0]}
+                    </div>
+                    <div>
+                        <h3 className="font-black text-xl text-text-strong tracking-tighter leading-none">{stock.symbol}</h3>
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-widest">{stock.name}</p>
+                    </div>
                 </div>
                 <div className="text-right">
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Today's P&L</div>
-                    <div className={`text-lg font-black font-mono tracking-tight ${todayColorClass}`}>{isTodayPositive ? '+' : ''}{formatter.format(todayPnl)}</div>
-                    <div className={`text-sm font-bold font-mono ${todayColorClass}`}>({todayPnlPercent.toFixed(2)}%)</div>
+                    <Sparkline history={stock.priceHistory} color={chartColor} />
                 </div>
             </div>
 
-            {/* Bottom section: Total P&L, Actions */}
-            <div className="border-t border-slate-200/50 dark:border-slate-700/50 pt-4 relative z-10">
-                <div className="flex justify-between items-center text-sm mb-4">
-                    <span className="font-bold text-slate-600 dark:text-slate-400">Total P&L</span>
-                    <span className={`font-black font-mono text-base ${totalColorClass}`}>{isTotalPositive ? '+' : ''}{formatter.format(totalPnl)} ({(totalPnlPercent).toFixed(2)}%)</span>
+            {/* Main Stats: Market Value and Shares */}
+            <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
+                <div className="bg-white/40 dark:bg-slate-800/30 p-4 rounded-2xl border border-white/20 dark:border-slate-700/20">
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Market Value</p>
+                    <div className="text-xl font-black text-text-strong tracking-tighter">{formatter.format(value)}</div>
+                    <div className="mt-2 flex items-center text-[10px] space-x-1.5 font-bold text-slate-400 dark:text-slate-500 uppercase">
+                        <span>{quantity.toLocaleString()} Shares</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                        <span>@{formatter.format(avgCost)}</span>
+                    </div>
                 </div>
-                <div className="flex space-x-3">
-                    <button
-                        className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 transition-all duration-300 hover:scale-[1.03] active:scale-95"
-                        onClick={() => onTradeAction(stock, TradeType.BUY)}
-                    >
-                        Buy More
-                    </button>
-                    <button
-                        className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30 transition-all duration-300 hover:scale-[1.03] active:scale-95"
+                <div className="bg-white/40 dark:bg-slate-800/30 p-4 rounded-2xl border border-white/20 dark:border-slate-700/20">
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Profit / Loss</p>
+                    <div className={`text-xl font-black tracking-tighter ${totalColor}`}>
+                        {isTotalPositive ? '+' : ''}{totalPnlPercent.toFixed(2)}%
+                    </div>
+                    <div className="mt-2 flex items-center">
+                        <div className="flex-grow h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${portfolioShare}%` }}
+                                className={`h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full`}
+                            />
+                        </div>
+                        <span className="ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">{portfolioShare.toFixed(1)}% Share</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Row: Today's performance and Quick Actions */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200/40 dark:border-slate-800/40 relative z-10">
+                <div className="flex items-center space-x-3">
+                    <div className={`p-2 rounded-xl ${isTodayPositive ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20'}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 ${todayColor} ${isTodayPositive ? '' : 'rotate-180'}`}>
+                            <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.03 9.83a.75.75 0 01-1.06-1.06l5.25-5.25a.75.75 0 011.06 0l5.25 5.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Today's Change</p>
+                        <p className={`text-xs font-black ${todayColor}`}>{isTodayPositive ? '+' : ''}{formatter.format(todayPnl)} ({todayPnlPercent.toFixed(2)}%)</p>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <button 
                         onClick={() => onTradeAction(stock, TradeType.SELL)}
+                        className="px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest text-rose-500 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
                     >
                         Sell
                     </button>
+                    <button
+                        onClick={() => onTradeAction(stock, TradeType.BUY)}
+                        className="px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                    >
+                        Buy More
+                    </button>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 };
 
@@ -150,12 +203,15 @@ const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings, stocks, onTradeAc
         return { ...holding, stock, price, value, totalPnl, totalPnlPercent, todayPnl, todayPnlPercent };
     }).sort((a, b) => b.value - a.value);
 
+    const totalPortfolioValue = holdingsWithMarketData.reduce((sum, h) => sum + h.value, 0);
+
     return (
-        <div id="holdings-view" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div id="holdings-view" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-6">
             {holdingsWithMarketData.map((holdingData) => (
                 <HoldingCard
                     key={holdingData.symbol}
                     holdingData={holdingData}
+                    totalPortfolioValue={totalPortfolioValue}
                     onTradeAction={onTradeAction}
                 />
             ))}

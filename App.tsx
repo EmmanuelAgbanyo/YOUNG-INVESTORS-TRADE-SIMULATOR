@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Header from './components/Header.tsx';
 import MarketView from './components/MarketView.tsx';
 import { useStockMarket } from './hooks/useStockMarket.ts';
@@ -22,7 +23,7 @@ import { apiClient } from './hooks/useAPI.ts';
 const hashPassword = (password: string): string => btoa(password);
 
 const App: React.FC = () => {
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [isInitialized, setIsInitialized] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showGuide, setShowGuide] = useState(false);

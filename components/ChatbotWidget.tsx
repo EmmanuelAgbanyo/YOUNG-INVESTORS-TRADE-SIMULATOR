@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Stock, Portfolio } from '../types.ts';
 import { useChatbot } from '../hooks/useChatbot.ts';
 
@@ -13,32 +14,40 @@ const PaperAirplaneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}><path d="M3.105 3.105a1.5 1.5 0 012.122-.219l8.684 4.342a1.5 1.5 0 010 2.54l-8.684 4.342a1.5 1.5 0 01-2.332-1.928l1.79-4.475a.5.5 0 00-.01-.052l-1.79-4.475a1.5 1.5 0 01.21-1.928z" /></svg>
 );
 const TypingIndicator: React.FC = () => (
-    <div className="flex items-center space-x-2 animate-fade-in-up">
-        <div className="w-8 h-8 rounded-full themed-bg-gradient flex items-center justify-center text-white text-sm font-bold shrink-0">AI</div>
-        <div className="flex items-center space-x-1 p-3 bg-base-200 rounded-lg">
-            <div className="w-2 h-2 rounded-full animate-pulse bg-base-content/50" />
-            <div className="w-2 h-2 rounded-full animate-pulse bg-base-content/50" style={{animationDelay: '0.2s'}} />
-            <div className="w-2 h-2 rounded-full animate-pulse bg-base-content/50" style={{animationDelay: '0.4s'}}/>
+    <motion.div 
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center space-x-3"
+    >
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-lg">AI</div>
+        <div className="flex items-center space-x-1.5 p-3.5 bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-none">
+            <div className="w-1.5 h-1.5 rounded-full animate-bounce bg-slate-400" />
+            <div className="w-1.5 h-1.5 rounded-full animate-bounce bg-slate-400" style={{animationDelay: '0.2s'}} />
+            <div className="w-1.5 h-1.5 rounded-full animate-bounce bg-slate-400" style={{animationDelay: '0.4s'}}/>
         </div>
-    </div>
+    </motion.div>
 );
 
 const ToolIndicator: React.FC<{ tool: string }> = ({ tool }) => {
     const messages: { [key: string]: string } = {
-        'getMarketSummary': 'Analyzing market data...',
-        'getStockAnalysis': 'Running stock analysis...',
-        'getPortfolioReview': 'Reviewing portfolio performance...'
+        'getMarketSummary': 'Analyzing market vectors...',
+        'getStockAnalysis': 'Synthesizing performance data...',
+        'getPortfolioReview': 'Auditing asset allocation...'
     };
-    const message = messages[tool] || 'Thinking...';
+    const message = messages[tool] || 'Synchronizing...';
 
     return (
-        <div className="flex items-center space-x-3 animate-fade-in-up">
-            <div className="w-8 h-8 rounded-full themed-bg-gradient flex items-center justify-center text-white text-sm font-bold shrink-0">AI</div>
-            <div className="flex items-center space-x-2 p-3 bg-base-200 rounded-lg">
-                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm text-base-content font-medium">{message}</span>
+        <motion.div 
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center space-x-3"
+        >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-lg">AI</div>
+            <div className="flex items-center space-x-3 p-3.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-2xl rounded-tl-none">
+                <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-[11px] text-blue-700 dark:text-blue-400 font-black uppercase tracking-widest leading-none">{message}</span>
             </div>
-        </div>
+        </motion.div>
     );
 };
 
@@ -82,45 +91,95 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ stocks, portfolio }) => {
   return (
     <>
       {/* Chat Window */}
-      <div className={`fixed bottom-24 right-4 sm:right-6 w-[calc(100%-2rem)] max-w-sm h-[70vh] max-h-[600px] bg-base-100 rounded-2xl shadow-2xl border border-base-300/50 flex flex-col transition-all duration-300 ease-in-out z-40 origin-bottom-right ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-        <header className="flex items-center justify-between p-4 border-b border-base-300 shrink-0 themed-bg-gradient bg-opacity-20">
-          <div className="flex items-center space-x-3"><div className="w-8 h-8 rounded-full themed-bg-gradient flex items-center justify-center text-white text-sm font-bold">AI</div><div><h3 className="font-bold text-text-strong">YIN AI Assistant</h3><p className="text-xs text-success flex items-center"><span className="relative flex h-2 w-2 mr-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span></span>Online</p></div></div>
-          <button onClick={() => setIsOpen(false)} className="p-1 rounded-full hover:bg-black/10"><XMarkIcon className="w-6 h-6 text-white" /></button>
-        </header>
-        <div className="flex-grow flex flex-col relative min-h-0">
-             <div className="absolute inset-0 bg-repeat bg-center opacity-[0.03]" style={{
-                backgroundImage: `radial-gradient(circle at 1px 1px, rgb(var(--base-content)) 1px, transparent 0)`,
-                backgroundSize: '25px 25px'
-            }} />
-            <div ref={chatContainerRef} className="relative flex-grow p-4 space-y-4 overflow-y-auto">
-              {messages.map((msg, index) => (
-                <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''} animate-fade-in-up`}>
-                  {msg.role === 'model' && <div className="w-8 h-8 rounded-full themed-bg-gradient flex items-center justify-center text-white text-sm font-bold shrink-0">AI</div>}
-                  <div className={`max-w-[80%] p-3 rounded-lg shadow-md ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-base-200'}`}><div className="text-sm leading-relaxed whitespace-pre-wrap">{renderMessageText(msg.text)}</div></div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-24 right-4 sm:right-6 w-[calc(100%-2rem)] max-w-sm h-[70vh] max-h-[600px] bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] shadow-2xl flex flex-col z-40 overflow-hidden"
+          >
+            <header className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white text-xs font-black shadow-lg">AI</div>
+                    <div>
+                        <h3 className="font-black text-text-strong tracking-tighter leading-none">Intelligence Hub</h3>
+                        <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mt-1.5 flex items-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
+                            Operations Live
+                        </p>
+                    </div>
                 </div>
-              ))}
-              {isLoading && (toolBeingUsed ? <ToolIndicator tool={toolBeingUsed} /> : <TypingIndicator />)}
-            </div>
-            {messages.length === 1 && !isLoading && (
-              <div className="p-4 border-t border-base-300 flex flex-wrap gap-2 animate-fade-in">
-                  {suggestions.map(s => (
-                      <button key={s} onClick={(e) => handleSendMessage(e, s)} className="px-3 py-1.5 bg-base-200 rounded-full text-sm font-semibold text-primary border border-primary/50 hover:bg-primary/10 transition-colors">
-                          {s}
-                      </button>
+                <button onClick={() => setIsOpen(false)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <XMarkIcon className="w-6 h-6" />
+                </button>
+            </header>
+            
+            <div className="flex-grow flex flex-col relative min-h-0 bg-white/20 dark:bg-slate-900/20">
+                <div ref={chatContainerRef} className="relative flex-grow p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                  {messages.map((msg, index) => (
+                    <motion.div 
+                        key={index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                    >
+                      {msg.role === 'model' && (
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-700 flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-lg">AI</div>
+                      )}
+                      <div className={`max-w-[85%] p-4 rounded-[1.5rem] shadow-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/60 dark:bg-slate-800/60 border border-white/20 dark:border-slate-700/20 text-slate-800 dark:text-slate-200 rounded-tl-none'}`}>
+                        <div className="text-sm leading-relaxed">{renderMessageText(msg.text)}</div>
+                      </div>
+                    </motion.div>
                   ))}
-              </div>
-            )}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-base-300 flex items-center space-x-2 shrink-0 bg-base-100">
-              <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Ask about the market..." className="input input-bordered w-full bg-base-200" disabled={isLoading} />
-              <button type="submit" className="btn btn-primary p-3" disabled={isLoading || !userInput.trim()} aria-label="Send Message"><PaperAirplaneIcon className="w-5 h-5" /></button>
-            </form>
-        </div>
-      </div>
+                  {isLoading && (toolBeingUsed ? <ToolIndicator tool={toolBeingUsed} /> : <TypingIndicator />)}
+                </div>
+
+                {messages.length === 1 && !isLoading && (
+                  <div className="p-4 flex flex-wrap gap-2 justify-center">
+                      {suggestions.map(s => (
+                          <button 
+                            key={s} 
+                            onClick={(e) => handleSendMessage(e, s)} 
+                            className="px-4 py-2 bg-white/60 dark:bg-slate-800/60 border border-white/20 dark:border-slate-700/20 rounded-full text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest hover:bg-blue-50 transition-all shadow-sm"
+                          >
+                              {s}
+                          </button>
+                      ))}
+                  </div>
+                )}
+
+                <form onSubmit={handleSendMessage} className="p-6 border-t border-slate-100 dark:border-slate-800 flex items-center space-x-3 shrink-0">
+                  <input 
+                    type="text" 
+                    value={userInput} 
+                    onChange={(e) => setUserInput(e.target.value)} 
+                    placeholder="Query market intel..." 
+                    className="flex-grow bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold text-text-strong placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                    disabled={isLoading} 
+                  />
+                  <button 
+                    type="submit" 
+                    className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all disabled:opacity-50"
+                    disabled={isLoading || !userInput.trim()}
+                  >
+                    <PaperAirplaneIcon className="w-5 h-5 -rotate-45" />
+                  </button>
+                </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Action Button */}
-      <button onClick={() => setIsOpen(!isOpen)} className={`fixed bottom-6 right-4 sm:right-6 btn btn-primary btn-circle shadow-xl transition-transform duration-300 ease-in-out z-40 w-16 h-16 ${isOpen ? 'scale-0' : 'scale-100'}`} aria-label="Open AI Assistant">
+      <motion.button 
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setIsOpen(!isOpen)} 
+        className={`fixed bottom-6 right-4 sm:right-6 w-16 h-16 bg-blue-600 text-white rounded-[1.5rem] shadow-2xl flex items-center justify-center z-40 transition-all duration-300 ${isOpen ? 'rotate-90 opacity-0 pointer-events-none' : 'opacity-100'}`}
+      >
         <ChatBubbleOvalLeftEllipsisIcon className="w-8 h-8" />
-      </button>
+      </motion.button>
     </>
   );
 };

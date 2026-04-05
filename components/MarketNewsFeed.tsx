@@ -3,6 +3,7 @@
 
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { NewsHeadline } from '../types.ts';
 
 interface MarketNewsFeedProps {
@@ -26,7 +27,7 @@ const LoadingSpinner: React.FC = () => (
 );
 
 const MarketNewsFeed: React.FC<MarketNewsFeedProps> = ({ news, isLoading, onRefresh }) => {
-    const error = !isLoading && news.length === 0 ? 'Could not fetch market news.' : null;
+    const error = !isLoading && news.length === 0 ? 'INTELLIGENCE_LINK_OFFLINE' : null;
     const [lastRefreshed, setLastRefreshed] = useState<string>('');
 
     useEffect(() => {
@@ -35,58 +36,98 @@ const MarketNewsFeed: React.FC<MarketNewsFeedProps> = ({ news, isLoading, onRefr
         }
     }, [isLoading, news]);
 
-    const impactColors = {
-        positive: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-400',
-        negative: 'border-rose-500 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-400',
-        neutral: 'border-blue-400 bg-blue-50 dark:bg-blue-500/10 dark:border-blue-500'
+    const impactColors: { [key: string]: { border: string; glow: string; text: string; dot: string } } = {
+        positive: { border: 'border-emerald-500/20', glow: 'bg-emerald-500/10', text: 'text-emerald-500', dot: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' },
+        negative: { border: 'border-rose-500/20', glow: 'bg-rose-500/10', text: 'text-rose-500', dot: 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' },
+        neutral: { border: 'border-blue-500/20', glow: 'bg-blue-500/10', text: 'text-blue-500', dot: 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]' }
     };
 
     return (
-        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-3xl p-6 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200/50 dark:border-slate-700/50">
-                <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-md">
-                        <NewspaperIcon className="w-5 h-5" />
+        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] shadow-2xl p-8 flex flex-col h-full group/news">
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100 dark:border-slate-800/50">
+                <div className="flex items-center space-x-5">
+                    <div className="p-3.5 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl text-white shadow-xl shadow-indigo-500/20">
+                        <NewspaperIcon className="w-7 h-7" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight leading-none">Market News</h3>
-                        {lastRefreshed && <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">Updated {lastRefreshed}</p>}
+                        <h3 className="text-2xl font-black text-text-strong tracking-tighter leading-none">Intelligence Feed</h3>
+                        {lastRefreshed && <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mt-3">{lastRefreshed} • Operational</p>}
                     </div>
-                </div>
-                <div className="flex items-center space-x-2 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-500/20">
-                    <div className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </div>
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Live</span>
                 </div>
             </div>
 
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar flex-grow">
-                {isLoading && (
-                    <div className="flex justify-center items-center py-8"><LoadingSpinner /> <span className="ml-3 text-sm font-medium text-slate-500 dark:text-slate-400">Fetching headlines...</span></div>
-                )}
-                {error && <p className="text-sm font-medium text-rose-500 text-center py-8 bg-rose-50 dark:bg-rose-500/10 rounded-xl border border-dashed border-rose-200 dark:border-rose-500/30">{error}</p>}
+            <div className="relative flex-grow min-h-0">
+                {/* Timeline vertical line */}
+                <div className="absolute left-3.5 top-0 bottom-0 w-0.5 bg-slate-100 dark:bg-slate-800/50" />
 
-                {!isLoading && news.length > 0 && news.map((item, index) => (
-                    <div key={index} className={`p-4 rounded-2xl border-l-[6px] shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden group ${impactColors[item.impact]}`}>
-                        <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-300 ${item.impact === 'positive' ? 'from-emerald-400 to-transparent' : item.impact === 'negative' ? 'from-rose-400 to-transparent' : 'from-blue-400 to-transparent'}`}></div>
-                        <div className="flex items-center justify-between mb-2 relative z-10">
-                            <span className="font-black text-base text-slate-800 dark:text-white tracking-tight drop-shadow-sm">{item.symbol}</span>
-                            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md shadow-sm">{item.impact}</span>
-                        </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-300 font-semibold leading-relaxed relative z-10">{item.headline}</p>
-                    </div>
-                ))}
+                <div className="space-y-8 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
+                    <AnimatePresence>
+                        {isLoading && (
+                            <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="flex flex-col items-center justify-center py-12"
+                            >
+                                <LoadingSpinner /> 
+                                <span className="mt-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Synchronizing Uplink...</span>
+                            </motion.div>
+                        )}
+                        {error && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex flex-col items-center justify-center p-8 text-center space-y-4"
+                            >
+                                <div className="p-4 bg-rose-50 dark:bg-rose-900/10 rounded-2xl">
+                                    <svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                </div>
+                                <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">{error}</p>
+                            </motion.div>
+                        )}
+
+                        {!isLoading && news.length > 0 && news.map((item, index) => {
+                            const theme = impactColors[item.impact] || impactColors.neutral;
+                            return (
+                                <motion.div 
+                                    key={index}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: index * 0.1 }}
+                                    className="relative pl-10"
+                                >
+                                    {/* Connection Point */}
+                                    <div className={`absolute left-[0.625rem] top-1.5 w-2 h-2 rounded-full border-2 border-white dark:border-slate-900 z-20 ${theme.dot}`} />
+                                    
+                                    <div className={`p-6 rounded-[2rem] bg-white/40 dark:bg-slate-800/20 backdrop-blur-md border ${theme.border} hover:bg-white/60 dark:hover:bg-slate-800/40 transition-all duration-500 group cursor-default shadow-sm hover:shadow-2xl`}>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <span className={`font-black text-xs tracking-tighter ${theme.text}`}>$ {item.symbol}</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${theme.dot}`} />
+                                                <span className={`text-[9px] font-black uppercase tracking-widest ${theme.text}`}>
+                                                    {item.impact}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-text-strong font-black leading-relaxed tracking-tight group-hover:text-blue-600 transition-colors duration-300">
+                                            {item.headline}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </AnimatePresence>
+                </div>
             </div>
 
-            <div className="text-center mt-6 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/50">
                 <button
                     onClick={onRefresh}
                     disabled={isLoading}
-                    className="px-6 py-2 rounded-xl text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center space-x-3 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-all active:scale-[0.98] disabled:opacity-50"
                 >
-                    Refresh Feed
+                    <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <span>Poll Database</span>
                 </button>
             </div>
         </div>

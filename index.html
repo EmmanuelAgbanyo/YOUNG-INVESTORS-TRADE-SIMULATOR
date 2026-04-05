@@ -37,38 +37,55 @@
     rel="stylesheet">
   <style>
     :root {
-      /* "Clarity" Light Theme - High Contrast & Professional */
-      --base-100: 243 244 246;
-      /* Soft, cool gray background (Gray-100) */
-      --base-200: 255 255 255;
-      /* Crisp white for cards and panels */
-      --base-300: 229 231 235;
-      /* Soft border color (Gray-200) */
-      --base-content: 51 65 85;
-      /* Dark slate for body text for high readability (Slate-600) */
-      --text-strong: 17 24 39;
-      /* Deep charcoal for headings (Slate-900) */
-      --primary: 79 70 229;
-      /* Vibrant, accessible indigo (Indigo-600) */
-      --secondary: 124 58 237;
-      --accent: 5 150 105;
-      --success: 22 163 74;
-      --error: 220 38 38;
-      --info: 59 130 246;
+      /* "Imperial" Light Theme - Ultra-Professional & High-End */
+      --base-100: 249 250 251; /* Gray-50: Crisp, clean canvass */
+      --base-200: 255 255 255; /* Pure white for cards */
+      --base-300: 243 244 246; /* Gray-100: Soft separations */
+      --base-content: 71 85 105; /* Slate-600: Refined readability */
+      --text-strong: 15 23 42; /* Slate-900: Authoritative headings */
+      --primary: 37 99 235; /* Blue-600: Global Finance Blue */
+      --secondary: 79 70 229; /* Indigo-600: Sophisticated Secondary */
+      --accent: 13 148 136; /* Teal-600: Modern Accent */
+      --success: 5 150 105; /* Emerald-600: Wealth Green */
+      --error: 225 29 72; /* Rose-600: Error Pink-Red */
+      --info: 2 132 199; /* Sky-600: Trust Blue */
+      
+      --glass-bg: 255 255 255 / 0.7;
+      --glass-border: 255 255 255 / 0.4;
+      --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     }
 
     [data-theme="dark"] {
-      --base-100: 23 25 35;
-      --base-200: 30 33 46;
-      --base-300: 49 53 71;
-      --base-content: 166 173 187;
-      --text-strong: 243 244 246;
-      --primary: 59 130 246;
-      --secondary: 139 92 246;
-      --accent: 16 185 129;
-      --success: 34 197 94;
-      --error: 239 68 68;
-      --info: 96 165 250;
+      --base-100: 2 6 23; /* Slate-950: Deep space */
+      --base-200: 15 23 42; /* Slate-900: Professional dark surface */
+      --base-300: 30 41 59; /* Slate-800: Defined borders */
+      --base-content: 148 163 184; /* Slate-400: Soft dark text */
+      --text-strong: 248 250 252; /* Slate-50: Bright dark mode text */
+      --primary: 96 165 250; /* Blue-400: Vibrant dark theme blue */
+      --secondary: 129 140 248; /* Indigo-400: Sophisticated dark tone */
+      --accent: 45 212 191; /* Teal-400: Modern dark accent */
+      --success: 52 211 153; /* Emerald-400 */
+      --error: 251 113 133; /* Rose-400 */
+      --info: 56 189 248; /* Sky-400 */
+      
+      --glass-bg: 15 23 42 / 0.6;
+      --glass-border: 255 255 255 / 0.05;
+    }
+
+    .glass-card {
+      background-color: rgb(var(--base-200) / 0.7);
+      backdrop-filter: blur(12px) saturate(180%);
+      border: 1px solid rgb(var(--base-300));
+      box-shadow: var(--shadow-lg);
+    }
+
+    [data-theme="dark"] .glass-card {
+      background-color: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
 
     .themed-bg-gradient {
@@ -308,7 +325,39 @@
     html { scroll-behavior: smooth; }
 
     /* Prevent horizontal overflow on mobile */
-    body { overflow-x: hidden; }
+    /* Prevent horizontal overflow on mobile */
+    body { 
+      overflow-x: hidden; 
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Professional Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgb(var(--base-300));
+      border-radius: 20px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgb(var(--base-content) / 0.3);
+      background-clip: content-box;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
 
   </style>
   <script src="https://cdn.tailwindcss.com"></script>

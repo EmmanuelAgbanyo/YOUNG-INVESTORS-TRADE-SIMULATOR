@@ -119,39 +119,38 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
     [traderStats]);
 
     return (
-        <div className="w-full flex flex-col gap-8">
-            {/* --- Personal Rank Banner --- */}
+        <div className="w-full flex flex-col gap-10">
+            {/* --- Personal Rank Banner (Imperial Elevation) --- */}
             {currentUserRank && (
                 <motion.div 
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2rem] p-6 text-white shadow-2xl shadow-blue-500/20"
+                    className="relative overflow-hidden group bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] p-8 shadow-2xl transition-all duration-500"
                 >
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 mix-blend-overlay"></div>
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700"></div>
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/10 to-indigo-600/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-1000"></div>
                     
-                    <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
-                        <div className="flex items-center gap-6">
+                    <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+                        <div className="flex items-center gap-8">
                             <div className="relative">
-                                <div className="absolute inset-0 bg-blue-400 rounded-2xl blur-lg opacity-40 animate-pulse"></div>
-                                <div className="relative w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl font-black border border-white/30">
+                                <div className="absolute inset-0 bg-blue-500 rounded-[2rem] blur-2xl opacity-20 animate-pulse"></div>
+                                <div className="relative w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-blue-500/20 border border-white/20">
                                     #{currentUserRank.rank}
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-xl font-black tracking-tight">{currentUserRank.name}, You're at the top!</h3>
-                                <p className="text-blue-100 text-sm font-medium opacity-90">Keep trading to climb higher in the global standings.</p>
+                                <h3 className="text-2xl font-black text-text-strong tracking-tighter leading-none">Your Position</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-3">{currentUserRank.name} • Rank #{currentUserRank.rank}</p>
                             </div>
                         </div>
                         
-                        <div className="flex items-center gap-8">
-                            <div className="text-right">
-                                <p className="text-[10px] uppercase tracking-widest font-black text-blue-100/70 mb-1">Portfolio Value</p>
-                                <p className="text-2xl font-black font-mono">{formatCurrency(currentUserRank.totalValue)}</p>
+                        <div className="flex flex-wrap items-center gap-6">
+                            <div className="px-6 py-4 rounded-3xl bg-white/60 dark:bg-slate-800/40 border border-white/40 dark:border-slate-700/40 shadow-sm">
+                                <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 dark:text-slate-500 mb-1.5">Portfolio Value</p>
+                                <p className="text-2xl font-black text-text-strong tracking-tighter">{formatCurrency(currentUserRank.totalValue)}</p>
                             </div>
-                            <div className={`flex flex-col items-end px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20`}>
-                                <p className="text-[10px] uppercase tracking-widest font-black text-blue-100/70 mb-1">Performance</p>
-                                <div className={`flex items-center gap-1.5 text-lg font-black ${currentUserRank.plPercentage >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            <div className={`px-6 py-4 rounded-3xl border shadow-sm ${currentUserRank.plPercentage >= 0 ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800/30' : 'bg-rose-50/50 border-rose-100 dark:bg-rose-900/10 dark:border-rose-800/30'}`}>
+                                <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 dark:text-slate-500 mb-1.5">Profit / Loss</p>
+                                <div className={`flex items-center gap-2 text-2xl font-black tracking-tighter ${currentUserRank.plPercentage >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     {currentUserRank.plPercentage >= 0 ? '+' : ''}{currentUserRank.plPercentage.toFixed(2)}%
                                 </div>
                             </div>
@@ -160,187 +159,157 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
                 </motion.div>
             )}
 
-            {/* --- Top 3 Podium Cards --- */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {topThree.map((trader, idx) => (
-                    <motion.div
-                        key={trader.profileId}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.1 }}
-                        whileHover={{ y: -10 }}
-                        className={`relative rounded-[2.5rem] p-8 overflow-hidden border ${
-                            idx === 0 
-                            ? 'bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 border-amber-300/50 text-amber-950 shadow-amber-500/30' 
-                            : idx === 1 
-                            ? 'bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 border-gray-100/50 text-gray-900 shadow-gray-400/30'
-                            : 'bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 border-orange-300/50 text-orange-950 shadow-orange-500/30'
-                        } shadow-2xl flex flex-col items-center text-center`}
-                    >
-                        {/* Shine Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/30 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                        
-                        <div className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center text-2xl">
-                            {idx === 0 ? '🏆' : idx === 1 ? '🥈' : '🥉'}
-                        </div>
+            {/* --- Elite Podium (Imperial Command) --- */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
+                {topThree.map((trader, idx) => {
+                    const isFirst = idx === 0;
+                    const orderClasses = isFirst ? 'md:order-2 md:h-[420px]' : idx === 1 ? 'md:order-1 md:h-[360px]' : 'md:order-3 md:h-[320px]';
+                    const gradientClasses = isFirst 
+                        ? 'from-amber-400 via-yellow-500 to-amber-600 shadow-amber-500/20' 
+                        : idx === 1 
+                        ? 'from-slate-300 via-slate-400 to-slate-500 shadow-slate-400/20'
+                        : 'from-orange-400 via-orange-500 to-orange-700 shadow-orange-500/20';
 
-                        <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-xl border-4 border-white/30 flex items-center justify-center text-4xl font-black shadow-inner mb-6 relative">
-                             {trader.name.charAt(0).toUpperCase()}
-                             {/* Floating Rank Badge */}
-                             <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg font-black text-gray-900 border-2 border-inherit shadow-lg">
-                                {trader.rank}
-                             </div>
-                        </div>
+                    return (
+                        <motion.div
+                            key={trader.profileId}
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.15, duration: 0.6 }}
+                            whileHover={{ y: -12 }}
+                            className={`${orderClasses} relative rounded-[3rem] p-8 overflow-hidden border border-white/20 dark:border-slate-800/30 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl shadow-2xl flex flex-col items-center text-center group`}
+                        >
+                            {/* Visual Decorations */}
+                            <div className={`absolute top-0 inset-x-0 h-2 bg-gradient-to-r ${gradientClasses}`}></div>
+                            <div className={`absolute -top-12 -right-12 w-32 h-32 bg-gradient-to-br ${gradientClasses} rounded-full blur-3xl opacity-10 group-hover:opacity-30 transition-opacity duration-700`}></div>
+                            
+                            <div className="relative mt-4 mb-6">
+                                <div className={`w-28 h-28 rounded-[2.5rem] bg-gradient-to-br ${gradientClasses} flex items-center justify-center text-4xl font-black text-white shadow-2xl border-4 border-white/20 relative z-10`}>
+                                     {trader.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="absolute -bottom-3 -right-3 w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-xl font-black text-text-strong shadow-xl border-2 border-slate-100 dark:border-slate-700 z-20">
+                                    {trader.rank}
+                                </div>
+                            </div>
 
-                        <h4 className="text-2xl font-black tracking-tight mb-1">{trader.name}</h4>
-                        <div className="px-4 py-1 rounded-full bg-black/10 text-[10px] font-black uppercase tracking-widest mb-6">
-                            Elite Trader
-                        </div>
+                            <h4 className="text-2xl font-black text-text-strong tracking-tighter mb-1">{trader.name}</h4>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8">Student Trader</p>
 
-                        <div className="w-full space-y-4">
-                            <div className="flex justify-between items-center border-b border-black/5 pb-2">
-                                <span className="text-[10px] font-bold uppercase opacity-60">Total Trades</span>
-                                <span className="font-mono font-black">{trader.tradesCount}</span>
+                            <div className="w-full space-y-4 pt-6 border-t border-slate-100 dark:border-slate-800/50">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Value</span>
+                                    <span className="text-sm font-black text-text-strong tracking-tight">{formatCurrency(trader.totalValue)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance</span>
+                                    <span className={`text-sm font-black ${trader.plPercentage >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {trader.plPercentage >= 0 ? '+' : ''}{trader.plPercentage.toFixed(2)}%
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trades</span>
+                                    <span className="text-sm font-black text-text-strong">{trader.tradesCount} Ex.</span>
+                                </div>
                             </div>
-                            <div className="flex justify-between items-center border-b border-black/5 pb-2">
-                                <span className="text-[10px] font-bold uppercase opacity-60">Portfolio</span>
-                                <span className="font-mono font-black">{formatCurrency(trader.totalValue)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-bold uppercase opacity-60">P/L %</span>
-                                <span className={`font-mono font-black ${trader.plPercentage >= 0 ? 'text-black' : 'text-rose-900'}`}>
-                                    {trader.plPercentage >= 0 ? '+' : ''}{trader.plPercentage.toFixed(2)}%
-                                </span>
-                            </div>
-                        </div>
-                    </motion.div>
-                ))}
+                        </motion.div>
+                    );
+                })}
             </div>
 
-            {/* --- Main Leaderboard Table --- */}
-            <div className="bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden">
-                <div className="p-8 flex items-center justify-between border-b border-white/10 decoration-wavy">
-                    <div className="flex items-center gap-4">
-                        <div className="p-4 bg-emerald-500/10 rounded-2xl">
-                            <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            {/* --- Global Performance Board --- */}
+            <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl rounded-[3rem] border border-white/20 dark:border-slate-800/20 shadow-2xl overflow-hidden">
+                <header className="p-10 border-b border-slate-100 dark:border-slate-800/50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-6">
+                        <div className="p-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl text-white shadow-lg shadow-emerald-500/20">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                             </svg>
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Active Rankings</h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide uppercase text-[10px]">Real-time synchronization engine enabled</p>
+                            <h2 className="text-3xl font-black text-text-strong tracking-tighter leading-none">Scoreboard</h2>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-3">Live Rankings • Updated Every Tick</p>
                         </div>
                     </div>
-                </div>
+                </header>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto custom-scrollbar">
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center p-32 gap-6">
-                            <div className="relative">
-                                <div className="w-16 h-16 border-4 border-blue-600/20 rounded-full"></div>
-                                <div className="absolute inset-0 w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                            <p className="text-gray-500 dark:text-gray-400 font-black uppercase tracking-[0.2em] text-[11px]">Syncing with exchange data...</p>
+                        <div className="flex flex-col items-center justify-center p-32 space-y-6">
+                            <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Loading scores...</p>
                         </div>
                     ) : (
-                        <table className="w-full text-left">
+                        <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-gray-50/50 dark:bg-gray-900/40 border-b border-white/5">
-                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Rank</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Trader Identity</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">Trade Activity</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-right">Liquidity Value</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-right">Performance Index</th>
-                                    {isAdmin && <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">Governance</th>}
+                                <tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800/50">
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rank</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Trader</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Trades</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Portfolio Value</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Gain / Loss</th>
+                                    {isAdmin && <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Action</th>}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100/10 dark:divide-gray-800/20">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                 <AnimatePresence>
                                     {restOfTraders.map((trader, index) => (
                                         <motion.tr 
                                             key={trader.profileId}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0 }}
-                                            transition={{ delay: index * 0.03 }}
-                                            className={`${trader.isCurrentUser ? 'bg-blue-600/10 dark:bg-blue-600/10' : ''} ${trader.isDisqualified ? 'opacity-40 grayscale' : ''} hover:bg-white/50 dark:hover:bg-white/5 transition-all group`}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                            className={`${trader.isCurrentUser ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''} ${trader.isDisqualified ? 'opacity-40 grayscale' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-default`}
                                         >
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-3">
-                                                    <span className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm border ${
-                                                        trader.isCurrentUser ? 'bg-blue-600 text-white border-blue-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-transparent dark:text-gray-400'
-                                                    }`}>
-                                                        {trader.rank}
-                                                    </span>
-                                                </div>
+                                            <td className="px-10 py-7">
+                                                <span className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm ${
+                                                    trader.isCurrentUser ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                                }`}>
+                                                    {trader.rank}
+                                                </span>
                                             </td>
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-xl shadow-black/5 ${
+                                            <td className="px-10 py-7">
+                                                <div className="flex items-center gap-5">
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-inner ${
                                                         trader.isCurrentUser 
-                                                        ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white translate-z-10' 
-                                                        : 'bg-gradient-to-br from-gray-700 to-gray-900 text-gray-100 dark:from-gray-100 dark:to-gray-300 dark:text-gray-900'
+                                                        ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white' 
+                                                        : 'bg-slate-100 dark:bg-slate-800 text-text-strong'
                                                     }`}>
                                                         {trader.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className={`text-base font-black tracking-tight ${trader.isCurrentUser ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
-                                                            {trader.name}
-                                                        </span>
-                                                        <div className="flex gap-2 items-center mt-1">
-                                                            {trader.isCurrentUser && <span className="text-[8px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">You</span>}
-                                                            {trader.isDisqualified && <span className="text-[8px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">DQD</span>}
-                                                            <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Level 1 Investor</span>
-                                                        </div>
+                                                        <span className="text-base font-black text-text-strong tracking-tight">{trader.name}</span>
+                                                        {trader.isCurrentUser && <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Self</span>}
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-6 text-center">
-                                                <div className="inline-flex flex-col items-center">
-                                                    <span className="text-sm font-black font-mono text-gray-900 dark:text-gray-100">{trader.tradesCount}</span>
-                                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Trades</span>
-                                                </div>
+                                            <td className="px-10 py-7 text-center">
+                                                <span className="text-sm font-black text-text-strong font-mono">{trader.tradesCount}</span>
                                             </td>
-                                            <td className="px-8 py-6 text-right">
-                                                <span className="text-base font-black font-mono text-gray-900 dark:text-gray-100 tracking-tighter">
+                                            <td className="px-10 py-7 text-right">
+                                                <span className="text-base font-black text-text-strong font-mono tracking-tighter">
                                                     {formatCurrency(trader.totalValue)}
                                                 </span>
                                             </td>
-                                            <td className="px-8 py-6 text-right">
-                                                <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-black shadow-lg shadow-black/5 ${
+                                            <td className="px-10 py-7 text-right">
+                                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black ${
                                                     trader.plPercentage >= 0 
-                                                    ? 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 border border-emerald-500/20' 
-                                                    : 'text-rose-600 bg-rose-500/10 dark:text-rose-400 border border-rose-500/20'
+                                                    ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' 
+                                                    : 'text-rose-600 bg-rose-50 dark:bg-rose-900/20'
                                                 }`}>
-                                                    <svg className={`w-3 h-3 ${trader.plPercentage < 0 ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 15l7-7 7 7" />
-                                                    </svg>
                                                     {trader.plPercentage >= 0 ? '+' : ''}{trader.plPercentage.toFixed(2)}%
                                                 </div>
                                             </td>
                                             {isAdmin && (
-                                                <td className="px-8 py-6 text-center">
+                                                <td className="px-10 py-7 text-center">
                                                     <button 
-                                                        onClick={async (e) => {
-                                                            const btn = e.currentTarget;
-                                                            btn.disabled = true;
-                                                            try {
-                                                                await apiClient.updateProfileStatus(trader.profileId, !trader.isDisqualified);
-                                                            } finally {
-                                                                btn.disabled = false;
-                                                            }
-                                                        }}
-                                                        className={`p-3 rounded-2xl transition-all hover:scale-110 active:scale-95 ${
+                                                        onClick={() => apiClient.updateProfileStatus(trader.profileId, !trader.isDisqualified)}
+                                                        className={`p-3 rounded-2xl transition-all ${
                                                             trader.isDisqualified 
-                                                            ? 'text-emerald-600 bg-emerald-500/10' 
-                                                            : 'text-rose-600 bg-rose-500/10'
-                                                        }`}
+                                                            ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
+                                                            : 'text-rose-500 bg-rose-50 dark:bg-rose-900/20'
+                                                        } hover:scale-110`}
                                                     >
-                                                        {trader.isDisqualified ? (
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                        ) : (
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                                        )}
+                                                        {trader.isDisqualified ? '✓' : '✗'}
                                                     </button>
                                                 </td>
                                             )}
@@ -353,57 +322,65 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
                 </div>
             </div>
 
-            {/* --- Live Market Pulse Ticker --- */}
-            <div className="bg-gradient-to-br from-gray-900 to-black rounded-[2rem] p-6 text-white overflow-hidden relative">
-                <div className="absolute top-0 right-0 p-8 opacity-10">
-                    <svg className="w-32 h-32 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4 8h-2v4h2v-4zm4-4h-2v10h2V7zm-8 10h-2v4h2v-4zm-4-8H5v12h2V9zm-4 4H1v8h2v-8z"/></svg>
+            {/* --- Terminal Activity Pulse --- */}
+            <div className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+                
+                <div className="flex items-center justify-between mb-10 relative z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping"></div>
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400">Recent Trades</h4>
+                    </div>
+                    <span className="text-[9px] font-black px-3 py-1 bg-white/10 rounded-full uppercase tracking-widest text-slate-400">Live</span>
                 </div>
                 
-                <div className="flex items-center gap-3 mb-6 relative z-10">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping"></div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Live Global Activity Pulse</h4>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative z-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
                     {(() => {
                         const allTrades: any[] = [];
-                        Object.entries(history).forEach(([userId, userTrades]: [string, any]) => {
+                        Object.entries(history || {}).forEach(([userId, userTrades]: [string, any]) => {
                             if (Array.isArray(userTrades)) {
-                                userTrades.forEach(t => allTrades.push({ ...t, traderId: userId }));
+                                userTrades.forEach(t => {
+                                    if (t && typeof t === 'object' && !Array.isArray(t)) {
+                                        allTrades.push({ ...(t as object), traderId: userId });
+                                    }
+                                });
                             } else if (userTrades && typeof userTrades === 'object') {
-                                Object.values(userTrades).forEach(t => allTrades.push({ ...t, traderId: userId }));
+                                Object.values(userTrades).forEach(t => {
+                                    if (t && typeof t === 'object' && !Array.isArray(t)) {
+                                        allTrades.push({ ...(t as object), traderId: userId });
+                                    }
+                                });
                             }
                         });
                         
                         const sortedTrades = allTrades.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 6);
                         
                         if (sortedTrades.length === 0) {
-                            return <p className="col-span-2 text-center py-8 text-gray-500 text-[11px] font-black uppercase tracking-widest italic font-medium">Scanning for market executions...</p>;
+                            return <p className="col-span-full text-center py-12 text-slate-500 font-bold uppercase tracking-widest text-[11px]">No trades have been made yet</p>;
                         }
 
                         return sortedTrades.map((trade, idx) => (
                             <motion.div 
                                 key={`${trade.id || idx}-${trade.traderId}`}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between hover:bg-white/10 transition-colors group"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className="bg-white/5 border border-white/5 rounded-3xl p-5 flex items-center justify-between hover:bg-white/10 transition-all group"
                             >
                                 <div className="flex items-center gap-4">
-                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${
+                                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs ${
                                          trade.tradeType === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
                                      }`}>
                                          {trade.tradeType === 'BUY' ? 'B' : 'S'}
                                      </div>
                                      <div className="flex flex-col">
-                                         <span className="text-xs font-black group-hover:text-blue-400 transition-colors uppercase tracking-tighter">{trade.traderName || 'Anonymous'}</span>
-                                         <div className="flex gap-2 items-center text-[10px] text-gray-400 font-bold">
-                                             <span>{trade.quantity} {trade.symbol}</span>
-                                             <span>•</span>
-                                             <span className="font-mono">{formatCurrency(trade.price || 0)}</span>
+                                         <span className="text-xs font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-tight">{trade.traderName || 'Redacted'}</span>
+                                         <div className="flex gap-2 items-center text-[10px] text-slate-500 font-bold mt-1">
+                                             <span>{trade.quantity}U • {trade.symbol}</span>
                                          </div>
                                      </div>
                                 </div>
-                                <span className="text-[9px] font-black bg-blue-500/20 text-blue-400 px-2 py-1 rounded-md">
+                                <span className="text-[10px] font-black text-slate-500 font-mono">
                                     {new Date(trade.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </motion.div>

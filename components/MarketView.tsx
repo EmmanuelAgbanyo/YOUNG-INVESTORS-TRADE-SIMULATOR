@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 // FIX: Import PerformanceHistoryEntry type to use in component props.
 import type { Stock, Portfolio, OrderHistoryItem, TradeOrder, NewsHeadline, ActiveOrder, UserProfile, ToastMessage, MarketEvent, MarketStatus, Holding, AdminSettings, PerformanceHistoryEntry } from '../types.ts';
 import { TradeType } from '../types.ts';
@@ -65,63 +66,64 @@ const TabNav: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void; isAdm
   const tabCount = baseTabs.length;
 
   return (
-    <>
+    <div className="relative mb-12">
       {/* MOBILE: horizontal scrollable icon+label tabs */}
-      <div className="sm:hidden overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        <div className="flex gap-1.5 p-1.5 min-w-max rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+      <div className="sm:hidden overflow-x-auto pb-4 custom-scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="flex gap-2 p-2 min-w-max rounded-[2rem] bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 shadow-xl">
           {baseTabs.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all duration-300 whitespace-nowrap min-w-[60px] ${
+              className={`flex flex-col items-center gap-1.5 px-6 py-3.5 rounded-2xl text-[10px] font-black tracking-[0.2em] uppercase transition-all duration-500 whitespace-nowrap min-w-[80px] ${
                 activeTab === tab
-                  ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-[1.03]'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-blue-600'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-[1.05] border border-blue-500'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-blue-500'
               }`}
               role="tab" aria-selected={activeTab === tab}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d={TAB_ICONS[tab]} />
               </svg>
-              <span>{tab.slice(0, 5)}</span>
+              <span>{tab}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* DESKTOP: premium sliding pill tabs */}
-      <div className="hidden sm:flex relative items-center justify-between p-1.5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 shadow-[0_8px_32px_rgba(0,0,0,0.05)] overflow-hidden">
-        <div className="absolute inset-0 rounded-2xl shadow-[inset_0_2px_10px_rgba(255,255,255,0.4)] dark:shadow-[inset_0_2px_10px_rgba(255,255,255,0.05)] pointer-events-none" />
-        <div
-          className="absolute top-1.5 bottom-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] shadow-lg shadow-blue-500/30"
+      {/* DESKTOP: premium sliding pill tabs with "Imperial" glow */}
+      <div className="hidden sm:flex relative items-center p-2 rounded-[2.5rem] bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 shadow-2xl overflow-hidden group/nav">
+        <motion.div
+          layoutId="tab-pill"
+          className="absolute h-[calc(100%-1rem)] bg-blue-600 rounded-[1.75rem] shadow-xl shadow-blue-500/30"
+          initial={false}
+          transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
           style={{
-            left: '0.375rem',
-            width: `calc((100% - ${(tabCount + 1) * 0.375}rem) / ${tabCount})`,
-            transform: `translateX(calc(${activeIndex * 100}% + ${activeIndex * 0.375}rem))`,
+            left: `calc(${(activeIndex / tabCount) * 100}% + 0.5rem)`,
+            width: `calc(${100 / tabCount}% - 1rem)`,
+            margin: '0.5rem 0',
           }}
         />
         {baseTabs.map(tab => (
           <button
             key={tab}
-            className={`relative py-2.5 px-2 md:px-4 text-center font-bold tracking-wide transition-all duration-300 flex-1 z-10 rounded-xl text-xs md:text-sm flex items-center justify-center gap-1.5 ${
-              activeTab === tab ? 'text-white drop-shadow-md cursor-default' : 'text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white/40 dark:hover:bg-slate-800/60'
+            className={`relative py-4 px-6 text-center font-black tracking-[0.1em] transition-all duration-500 flex-1 z-10 rounded-2xl text-xs uppercase flex items-center justify-center gap-3 ${
+              activeTab === tab ? 'text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
             }`}
             onClick={() => setActiveTab(tab)}
             role="tab" aria-selected={activeTab === tab}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d={TAB_ICONS[tab]} />
             </svg>
             <span className="truncate">{tab}</span>
           </button>
         ))}
       </div>
-    </>
+    </div>
   );
 }
 
 const MarketView: React.FC<MarketViewProps> = (props) => {
-  // FIX: Destructured the new 'performanceHistory' prop.
   const { stocks, profile, portfolio, activeOrders, orderHistory, placeOrder, cancelOrder, news, isNewsLoading, fetchNews, marketStatus, activeMarketEvent, isAdmin, setToast, adminSettings, performanceHistory, openMarketAdmin, closeMarketAdmin, marketControlMode, onUpdateMarketControlMode } = props;
   const [activeTab, setActiveTab] = useState<Tab>('Dashboard');
   const [selectedStockForTrade, setSelectedStockForTrade] = useState<Stock | null>(null);
@@ -131,19 +133,27 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
   const { sessions, startAnalysis, sendMessage } = useAIAnalyst();
 
   const { holdingsValue, totalPnL, totalUnsettledCash } = useMemo(() => {
-    let holdingsValue = 0;
+    let currentHoldingsValue = 0;
     let totalCostBasis = 0;
-    // FIX: Explicitly type the 'holding' parameter to resolve 'unknown' type error.
-    Object.values(portfolio.holdings).forEach((holding: Holding) => {
+    
+    const holdings = portfolio?.holdings || {};
+    Object.values(holdings).forEach((holding: any) => {
       const stock = stocks.find(s => s.symbol === holding.symbol);
-      holdingsValue += (stock ? stock.price * holding.quantity : 0);
-      totalCostBasis += holding.avgCost * holding.quantity;
+      currentHoldingsValue += (stock ? stock.price * holding.quantity : 0);
+      totalCostBasis += (holding.avgCost || 0) * holding.quantity;
     });
-    const totalUnsettledCash = portfolio.unsettledCash.reduce((sum, item) => sum + item.amount, 0);
-    return { holdingsValue, totalPnL: holdingsValue - totalCostBasis, totalUnsettledCash };
-  }, [portfolio.holdings, portfolio.unsettledCash, stocks]);
 
-  const totalValue = portfolio.cash + totalUnsettledCash + holdingsValue;
+    const unsettledCashArr = Array.isArray(portfolio?.unsettledCash) ? portfolio.unsettledCash : [];
+    const currentUnsettledCash = unsettledCashArr.reduce((sum, item) => sum + (item?.amount || 0), 0);
+    
+    return { 
+      holdingsValue: currentHoldingsValue, 
+      totalPnL: currentHoldingsValue - totalCostBasis, 
+      totalUnsettledCash: currentUnsettledCash 
+    };
+  }, [portfolio, stocks]);
+
+  const totalValue = (portfolio?.cash || 0) + totalUnsettledCash + holdingsValue;
 
   const activeStockForAnalysis = useMemo(() => {
     if (!activeSymbolForAnalysis) return stocks[0] || null;
@@ -161,7 +171,8 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
     setTradeType(type);
     setActiveTab('Trade');
     setActiveSymbolForAnalysis(stock.symbol);
-    setTimeout(() => setSelectedStockForTrade(null), 0);
+    // NOTE: selectedStockForTrade is cleared by TradeForm after it reads the prop
+    // via its internal useEffect. Do NOT reset to null here synchronously.
   };
 
   const handleSymbolChange = (symbol: string) => {
@@ -182,44 +193,75 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
     switch (activeTab) {
       case 'Dashboard':
         return (
-          <div id="dashboard-view" className="space-y-4 sm:space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
-              <div className="animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-                <PortfolioAllocationChart holdings={portfolio.holdings} stocks={stocks} />
+          <motion.div 
+            id="dashboard-view" 
+            className="space-y-12 pb-20"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            {/* Primary Analysis Cluster */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch">
+              <div className="xl:col-span-8 flex flex-col">
+                <div className="flex-grow">
+                   <PerformanceChart
+                     history={performanceHistory || []}
+                     startingCapital={adminSettings.startingCapital}
+                   />
+                </div>
               </div>
-              <div className="animate-fade-in-up" style={{ animationDelay: '450ms' }}>
-                <PerformanceChart
-                  history={performanceHistory || []}
-                  startingCapital={adminSettings.startingCapital}
-                />
+              <div className="xl:col-span-4 flex flex-col">
+                <div className="flex-grow">
+                   <PortfolioAllocationChart holdings={portfolio.holdings} stocks={stocks} />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start">
-              <div className="lg:col-span-2 space-y-4 sm:space-y-6 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-                <HoldingsView
-                  holdings={Object.values(portfolio.holdings)}
-                  stocks={stocks}
-                  onTradeAction={handleSelectStockForTrade}
-                />
-                <div className="pt-4 animate-fade-in-up" style={{ animationDelay: '650ms' }}>
+
+            {/* Execution & Intelligence Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+              {/* Left Column: Data Grids */}
+              <div className="lg:col-span-8 space-y-12">
+                <div className="glass-perspective">
+                   <HoldingsView
+                     holdings={Object.values(portfolio.holdings)}
+                     stocks={stocks}
+                     onTradeAction={handleSelectStockForTrade}
+                   />
+                </div>
+                <div className="glass-perspective">
                    <Leaderboard stocks={stocks} currentUserProfile={profile} />
                 </div>
               </div>
-              <div className="space-y-4 sm:space-y-6 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
-                <MarketMovers stocks={stocks} marketStatus={marketStatus} />
-                <MarketNewsFeed
-                  news={news}
-                  isLoading={isNewsLoading}
-                  onRefresh={fetchNews}
-                />
+
+              {/* Right Column: Intelligence Hub */}
+              <div className="lg:col-span-4 space-y-10">
+                <div id="intelligence-hub" className="flex flex-col space-y-10 lg:sticky lg:top-8">
+                   <div className="group/intel transform transition-all duration-500 hover:scale-[1.01]">
+                      <MarketMovers stocks={stocks} marketStatus={marketStatus} />
+                   </div>
+                   <div className="group/intel transform transition-all duration-500 hover:scale-[1.01]">
+                      <MarketNewsFeed
+                        news={news}
+                        isLoading={isNewsLoading}
+                        onRefresh={fetchNews}
+                      />
+                   </div>
+                </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         );
       case 'Trade':
         return (
-          <div id="trade-view" className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start">
-            <div className="lg:col-span-1 order-1">
+          <motion.div 
+            id="trade-view" 
+            className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start overflow-visible"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="lg:col-span-4 order-2 lg:order-1 sticky top-8">
               <TradeForm
                 stocks={stocks}
                 portfolio={portfolio}
@@ -230,7 +272,7 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
                 marketStatus={marketStatus}
               />
             </div>
-            <div className="lg:col-span-2 order-2">
+            <div className="lg:col-span-8 order-1 lg:order-2">
               <StockChartView
                 stock={activeStockForAnalysis}
                 analystSession={currentAnalystSession}
@@ -239,7 +281,7 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
                 marketStatus={marketStatus}
               />
             </div>
-          </div>
+          </motion.div>
         );
       case 'Academy':
         return <AcademyView profile={profile} />;
@@ -268,20 +310,29 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
   };
 
   return (
-    <>
-      <div className="space-y-6">
+    <div className="relative min-h-screen">
+      {/* Imperial Background Aesthetic */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10 bg-white/20 dark:bg-transparent">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/5 blur-[120px] animate-slow-pulse" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/5 blur-[120px] animate-slow-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <div className="space-y-8 max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <MarketEventDisplay event={activeMarketEvent} />
         {activeTab !== 'Academy' && <PortfolioSummary cash={portfolio.cash} unsettledCash={totalUnsettledCash} holdingsValue={holdingsValue} totalValue={totalValue} totalPnL={totalPnL} />}
 
-        <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '350ms' }}>
+        <div className="space-y-0 relative">
           <TabNav activeTab={activeTab} setActiveTab={setActiveTab} isAdmin={isAdmin} profile={profile} />
           <div className="mt-4">
-            <div key={activeTab} className="animate-fade-in">
-              {renderContent()}
-            </div>
+            <AnimatePresence mode="wait">
+              <div key={activeTab}>
+                {renderContent()}
+              </div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
+
       <TradeConfirmationModal
         isOpen={!!orderToConfirm}
         onClose={() => setOrderToConfirm(null)}
@@ -290,7 +341,7 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
         onConfirmOrder={placeOrder}
         onGoToOrders={handleGoToOrders}
       />
-    </>
+    </div>
   );
 };
 

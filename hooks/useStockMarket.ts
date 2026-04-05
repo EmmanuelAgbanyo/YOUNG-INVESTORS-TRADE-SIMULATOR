@@ -159,15 +159,26 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
 
                 if (portfolioSnap.exists()) {
                     // Firebase has data - use it as source of truth
+                    const portfolioData = portfolioSnap.val();
+                    // Firebase stores arrays as objects with numeric keys — normalize back to arrays
+                    const rawUnsettled = portfolioData.unsettledCash;
+                    const unsettledCash = rawUnsettled
+                        ? (Array.isArray(rawUnsettled) ? rawUnsettled : Object.values(rawUnsettled))
+                        : [];
+                    const rawPerf = portfolioData.performanceHistory;
+                    const performanceHistory = rawPerf
+                        ? (Array.isArray(rawPerf) ? rawPerf : Object.values(rawPerf))
+                        : [];
+
                     const firebaseState: ProfileState = {
                         portfolio: {
-                            cash: portfolioSnap.val().cash,
-                            unsettledCash: portfolioSnap.val().unsettledCash || [],
+                            cash: portfolioData.cash,
+                            unsettledCash,
                             holdings: holdingsSnap.exists() ? holdingsSnap.val() : {}
                         },
-                        activeOrders: ordersSnap.exists() ? Object.values(ordersSnap.val()) : [],
-                        orderHistory: historySnap.exists() ? Object.values(historySnap.val()) : [],
-                        performanceHistory: portfolioSnap.val().performanceHistory || []
+                        activeOrders: ordersSnap.exists() ? Object.values(ordersSnap.val()).filter(Boolean) as ActiveOrder[] : [],
+                        orderHistory: historySnap.exists() ? Object.values(historySnap.val()).filter(Boolean) as OrderHistoryItem[] : [],
+                        performanceHistory,
                     };
                     setProfileState(firebaseState);
                 } else {
@@ -507,7 +518,11 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
             const now = Date.now();
 
             const settledItems: UnsettledCashItem[] = [];
-            const stillUnsettled = prevState.portfolio.unsettledCash.filter(item => { if (now >= item.settlesAt) { settledItems.push(item); return false; } return true; });
+            // Guard: Firebase may de-serialize arrays as objects — normalize before filtering
+            const unsettledCashArr: UnsettledCashItem[] = Array.isArray(prevState.portfolio.unsettledCash)
+                ? prevState.portfolio.unsettledCash
+                : Object.values(prevState.portfolio.unsettledCash || {});
+            const stillUnsettled = unsettledCashArr.filter(item => { if (now >= item.settlesAt) { settledItems.push(item); return false; } return true; });
             if (settledItems.length > 0) {
                 const totalSettled = settledItems.reduce((sum, item) => sum + item.amount, 0);
                 newCash += totalSettled;
