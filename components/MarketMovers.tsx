@@ -78,7 +78,7 @@ const EmptyState: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
-const MarketMovers: React.FC<MarketMoversProps> = ({ stocks, marketStatus }) => {
+const MarketMovers: React.FC<MarketMoversProps> = React.memo(({ stocks, marketStatus }) => {
   const { gainers, losers, lastUpdated } = useMemo(() => {
     const withChange = stocks.map(stock => {
       let changeVal = typeof stock.change === 'number' ? stock.change : 0;
@@ -148,6 +148,6 @@ const MarketMovers: React.FC<MarketMoversProps> = ({ stocks, marketStatus }) => 
       </div>
     </div>
   );
-};
+});
 
 export default MarketMovers;

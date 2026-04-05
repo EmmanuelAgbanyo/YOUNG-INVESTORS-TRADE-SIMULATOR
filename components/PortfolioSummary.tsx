@@ -104,7 +104,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: number; 
   </motion.div>
 );
 
-const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ cash, unsettledCash, holdingsValue, totalValue, totalPnL }) => {
+const PortfolioSummary: React.FC<PortfolioSummaryProps> = React.memo(({ cash, unsettledCash, holdingsValue, totalValue, totalPnL }) => {
   const formatter = new Intl.NumberFormat('en-GH', {
     style: 'currency',
     currency: 'GHS',
@@ -151,6 +151,6 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ cash, unsettledCash
       </div>
     </div>
   );
-};
+});
 
 export default PortfolioSummary;

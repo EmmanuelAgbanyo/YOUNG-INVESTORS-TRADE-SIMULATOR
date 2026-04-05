@@ -1,7 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// FIX: Import PerformanceHistoryEntry type to use in component props.
 import type { Stock, Portfolio, OrderHistoryItem, TradeOrder, NewsHeadline, ActiveOrder, UserProfile, ToastMessage, MarketEvent, MarketStatus, Holding, AdminSettings, PerformanceHistoryEntry } from '../types.ts';
 import { TradeType } from '../types.ts';
 import PortfolioSummary from './PortfolioSummary.tsx';
@@ -15,12 +14,20 @@ import StockChartView from './StockChartView.tsx';
 import { useAIAnalyst } from '../hooks/useAIAnalyst.ts';
 import PortfolioAllocationChart from './PortfolioAllocationChart.tsx';
 import PerformanceChart from './PerformanceChart.tsx';
-import AdminView from './AdminView.tsx';
 import TeamView from './TeamView.tsx';
-import AcademyView from './AcademyView.tsx';
 import MarketEventDisplay from './MarketEventDisplay.tsx';
 import TradeConfirmationModal from './TradeConfirmationModal.tsx';
 import Leaderboard from './Leaderboard.tsx';
+
+// Lazy-load heavy tabs — only parsed & executed when first visited
+const AdminView = lazy(() => import('./AdminView.tsx'));
+const AcademyView = lazy(() => import('./AcademyView.tsx'));
+
+const TabFallback = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" />
+  </div>
+);
 
 interface MarketViewProps {
   stocks: Stock[];
@@ -230,7 +237,7 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
                    />
                 </div>
                 <div className="glass-perspective">
-                   <Leaderboard stocks={stocks} currentUserProfile={profile} />
+                   <Leaderboard stocks={stocks} currentUserProfile={profile} isVisible={activeTab === 'Dashboard'} />
                 </div>
               </div>
 
@@ -284,7 +291,7 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
           </motion.div>
         );
       case 'Academy':
-        return <AcademyView profile={profile} />;
+        return <Suspense fallback={<TabFallback />}><AcademyView profile={profile} /></Suspense>;
       case 'Orders':
         return <OrdersView activeOrders={activeOrders} orderHistory={orderHistory} onCancelOrder={cancelOrder} />;
       case 'History':
@@ -293,16 +300,18 @@ const MarketView: React.FC<MarketViewProps> = (props) => {
         return <TeamView profile={profile} orderHistory={orderHistory} />;
       case 'Admin':
         return isAdmin ? (
-          <AdminView 
-            stocks={stocks} 
-            setToast={setToast} 
-            marketStatus={marketStatus} 
-            openMarketAdmin={openMarketAdmin} 
-            closeMarketAdmin={closeMarketAdmin} 
-            adminSettings={adminSettings}
-            marketControlMode={marketControlMode}
-            onUpdateMarketControlMode={onUpdateMarketControlMode}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <AdminView 
+              stocks={stocks} 
+              setToast={setToast} 
+              marketStatus={marketStatus} 
+              openMarketAdmin={openMarketAdmin} 
+              closeMarketAdmin={closeMarketAdmin} 
+              adminSettings={adminSettings}
+              marketControlMode={marketControlMode}
+              onUpdateMarketControlMode={onUpdateMarketControlMode}
+            />
+          </Suspense>
         ) : null;
       default:
         return null;

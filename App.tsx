@@ -83,7 +83,7 @@ const App: React.FC = () => {
           setShowOnboarding(true);
         }
       }
-    }, 1500); // Increased delay for splash screen visibility
+    }, 600); // Reduced from 1500ms — data is usually ready in <200ms
     return () => clearTimeout(timer);
   }, [activeProfile]);
 
@@ -242,12 +242,19 @@ const App: React.FC = () => {
         <StockTicker stocks={stockMarket.stocks} />
         <main className="flex-grow w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
           <MarketView
-            {...stockMarket}
+            stocks={stockMarket.stocks}
             profile={activeProfile}
             portfolio={stockMarket.profileState.portfolio}
             activeOrders={stockMarket.profileState.activeOrders}
             orderHistory={stockMarket.profileState.orderHistory}
             performanceHistory={stockMarket.profileState.performanceHistory}
+            placeOrder={stockMarket.placeOrder}
+            cancelOrder={stockMarket.cancelOrder}
+            news={stockMarket.news}
+            isNewsLoading={stockMarket.isNewsLoading}
+            fetchNews={stockMarket.fetchNews}
+            marketStatus={stockMarket.marketStatus}
+            activeMarketEvent={stockMarket.activeMarketEvent}
             isAdmin={isAdmin}
             setToast={setToast}
             adminSettings={stockMarket.adminSettings}

@@ -1,216 +1,389 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Card from './ui/Card.tsx';
-import EmptyState from './ui/EmptyState.tsx';
 import type { PerformanceHistoryEntry } from '../types.ts';
-
-const ChartBarIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-    </svg>
-);
 
 interface PerformanceChartProps {
     history: PerformanceHistoryEntry[];
     startingCapital: number;
 }
 
-interface TooltipData {
+interface TooltipState {
     x: number;
     y: number;
     value: number;
     pnl: number;
+    pnlPct: number;
     timestamp: number;
+    svgX: number;
 }
 
+const RANGES = ['All', '1H', '30M', '15M'] as const;
+type Range = typeof RANGES[number];
+
+const GHS = (v: number) =>
+    new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+
+const GHS2 = (v: number) =>
+    new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+
 const PerformanceChart: React.FC<PerformanceChartProps> = ({ history, startingCapital }) => {
-    const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
-    const formatter = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+    const [activeRange, setActiveRange] = useState<Range>('All');
+    const svgRef = useRef<SVGSVGElement>(null);
 
-    const chartConfig = {
-        width: 500,
-        height: 250,
-        padding: { top: 10, right: 10, bottom: 20, left: 50 },
-    };
+    // ── filter history by range ──
+    const filteredHistory = useMemo(() => {
+        if (!history.length) return [];
+        const now = Date.now();
+        const cutoffs: Record<Range, number> = {
+            All: 0,
+            '1H': now - 60 * 60 * 1000,
+            '30M': now - 30 * 60 * 1000,
+            '15M': now - 15 * 60 * 1000,
+        };
+        const cut = cutoffs[activeRange];
+        const filtered = cut ? history.filter(h => h.timestamp >= cut) : history;
+        return filtered.length >= 2 ? filtered : history;
+    }, [history, activeRange]);
 
-    // FIX: Calculated 'startingCapitalY' inside the memoized callback and returned it to resolve the scope issue.
-    const { linePath, areaPath, minVal, maxVal, breakEvenOffset, yAxisLabels, dataPoints, startingCapitalY } = useMemo(() => {
-        const { width, height, padding } = chartConfig;
-        const chartWidth = width - padding.left - padding.right;
-        const chartHeight = height - padding.top - padding.bottom;
+    // ── KPI stats ──
+    const stats = useMemo(() => {
+        if (filteredHistory.length < 2) return null;
+        const first = filteredHistory[0].portfolioValue;
+        const last = filteredHistory[filteredHistory.length - 1].portfolioValue;
+        const peak = Math.max(...filteredHistory.map(h => h.portfolioValue));
+        const trough = Math.min(...filteredHistory.map(h => h.portfolioValue));
+        const pnl = last - startingCapital;
+        const pnlPct = (pnl / startingCapital) * 100;
+        const rangePnl = last - first;
+        const rangePnlPct = ((last - first) / first) * 100;
+        const isUp = last >= startingCapital;
+        return { first, last, peak, trough, pnl, pnlPct, rangePnl, rangePnlPct, isUp };
+    }, [filteredHistory, startingCapital]);
 
-        if (history.length < 2) return { linePath: '', areaPath: '', minVal: 0, maxVal: 0, breakEvenOffset: 0.5, yAxisLabels: [], dataPoints: [], startingCapitalY: chartHeight / 2 };
+    // ── SVG geometry ──
+    const W = 800, H = 280;
+    const PAD = { top: 24, right: 24, bottom: 40, left: 72 };
+    const cW = W - PAD.left - PAD.right;
+    const cH = H - PAD.top - PAD.bottom;
 
-        const values = history.map(h => h.portfolioValue);
-        const minDataVal = Math.min(...values, startingCapital) * 0.98;
-        const maxDataVal = Math.max(...values, startingCapital) * 1.02;
-        const valRange = maxDataVal - minDataVal || 1;
+    const { linePath, areaPath, yLines, xLabels, dataPoints, breakY } = useMemo(() => {
+        const empty = { linePath: '', areaPath: '', yLines: [], xLabels: [], dataPoints: [], breakY: PAD.top + cH / 2 };
+        if (filteredHistory.length < 2) return empty;
 
-        const xScale = (index: number) => padding.left + (index / (history.length - 1)) * chartWidth;
-        const yScale = (value: number) => padding.top + chartHeight - ((value - minDataVal) / valRange) * chartHeight;
+        const vals = filteredHistory.map(h => h.portfolioValue);
+        const allVals = [...vals, startingCapital];
+        const minV = Math.min(...allVals) * 0.985;
+        const maxV = Math.max(...allVals) * 1.015;
+        const vRange = maxV - minV || 1;
+        const n = filteredHistory.length;
 
-        const points = history.map((h, i) => `${xScale(i)},${yScale(h.portfolioValue)}`).join(' ');
-        const linePath = `M${points.split(' ')[0]} L${points}`;
+        const xS = (i: number) => PAD.left + (i / (n - 1)) * cW;
+        const yS = (v: number) => PAD.top + cH - ((v - minV) / vRange) * cH;
 
-        const areaPoints = `${xScale(0)},${height - padding.bottom} ${points} ${xScale(history.length - 1)},${height - padding.bottom}`;
-        const areaPath = `M${areaPoints}`;
+        // smooth bezier path
+        const pts = filteredHistory.map((h, i) => ({ x: xS(i), y: yS(h.portfolioValue) }));
+        const d = pts.reduce((acc, p, i) => {
+            if (i === 0) return `M ${p.x} ${p.y}`;
+            const prev = pts[i - 1];
+            const cpx = (prev.x + p.x) / 2;
+            return `${acc} C ${cpx} ${prev.y} ${cpx} ${p.y} ${p.x} ${p.y}`;
+        }, '');
 
-        const calculatedStartingCapitalY = isNaN(yScale(startingCapital)) ? padding.top + chartHeight / 2 : yScale(startingCapital);
-        const breakEvenLineY = calculatedStartingCapitalY;
-        const breakEvenOffsetVal = (breakEvenLineY - padding.top) / (chartHeight || 1);
-        const breakEvenOffset = isNaN(breakEvenOffsetVal) ? 0.5 : Math.max(0, Math.min(1, breakEvenOffsetVal));
+        const bottom = PAD.top + cH;
+        const areaD = `${d} L ${xS(n - 1)} ${bottom} L ${xS(0)} ${bottom} Z`;
 
-        const numLabels = 5;
-        const yAxisLabels = Array.from({ length: numLabels }, (_, i) => {
-            const value = minDataVal + (valRange / (numLabels - 1)) * i;
-            return { value, y: yScale(value) };
+        // y-grid — 6 levels
+        const numY = 6;
+        const yLines = Array.from({ length: numY }, (_, i) => {
+            const v = minV + (vRange / (numY - 1)) * i;
+            return { v, y: yS(v) };
         });
 
-        const dataPoints = history.map((h, i) => ({
-            ...h,
-            x: xScale(i),
-            y: yScale(h.portfolioValue),
-        }));
-
-        return { linePath, areaPath, minVal: minDataVal, maxVal: maxDataVal, breakEvenOffset, yAxisLabels, dataPoints, startingCapitalY: calculatedStartingCapitalY };
-    }, [history, startingCapital, chartConfig]);
-
-
-    // FIX: Replaced incorrect handler logic and updated the event type to 'SVGSVGElement' to match the element it's attached to.
-    const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
-        if (!dataPoints.length) return;
-        const svg = event.currentTarget;
-        const rect = svg.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-
-        const closestPoint = dataPoints.reduce((closest, point) => {
-            const dist = Math.abs(point.x - mouseX);
-            return dist < Math.abs(closest.x - mouseX) ? point : closest;
+        // x time labels — up to 6
+        const numX = Math.min(6, n);
+        const step = Math.floor((n - 1) / (numX - 1)) || 1;
+        const xLabels = Array.from({ length: numX }, (_, i) => {
+            const idx = Math.min(i * step, n - 1);
+            return { x: xS(idx), t: filteredHistory[idx].timestamp };
         });
 
-        setTooltipData({
-            x: closestPoint.x,
-            y: closestPoint.y,
-            value: closestPoint.portfolioValue,
-            pnl: closestPoint.portfolioValue - startingCapital,
-            timestamp: closestPoint.timestamp,
-        });
-    };
+        const dataPoints = filteredHistory.map((h, i) => ({ x: xS(i), y: yS(h.portfolioValue), portfolioValue: h.portfolioValue, timestamp: h.timestamp }));
+        const breakY = yS(startingCapital);
+        const breakOffset = Math.max(0, Math.min(1, (breakY - PAD.top) / cH));
 
-    if (history.length < 2) {
+        return { linePath: d, areaPath: areaD, yLines, xLabels, dataPoints, breakY, breakOffset };
+    }, [filteredHistory, startingCapital]);
+
+    // ── crosshair mouse handling ──
+    const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+        if (!dataPoints.length || !svgRef.current) return;
+        const rect = svgRef.current.getBoundingClientRect();
+        const scaleX = W / rect.width;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+
+        let closest = dataPoints[0];
+        let minDist = Math.abs(dataPoints[0].x - mouseX);
+        for (const p of dataPoints) {
+            const d = Math.abs(p.x - mouseX);
+            if (d < minDist) { minDist = d; closest = p; }
+        }
+
+        const pnl = closest.portfolioValue - startingCapital;
+        const pnlPct = (pnl / startingCapital) * 100;
+        setTooltip({
+            x: closest.x, y: closest.y, value: closest.portfolioValue,
+            pnl, pnlPct, timestamp: closest.timestamp, svgX: closest.x / W,
+        });
+    }, [dataPoints, startingCapital]);
+
+    const isUp = stats?.isUp ?? true;
+    const lineColor = isUp ? '#10b981' : '#f43f5e';
+    const gradStartColor = isUp ? '#10b981' : '#f43f5e';
+    const gradEndColor = isUp ? '#6ee7b7' : '#fca5a5';
+
+    // ── empty state ──
+    if (!stats) {
         return (
-            <Card className="h-full">
-                <EmptyState
-                    icon={<ChartBarIcon className="w-12 h-12" />}
-                    title="Performance History"
-                    message="Your portfolio performance will be charted here as the market changes."
-                />
-            </Card>
+            <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] shadow-2xl p-10 flex flex-col items-center justify-center min-h-[340px] text-center space-y-6">
+                <motion.div
+                    animate={{ scale: [1, 1.08, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 2.5 }}
+                    className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center border border-blue-500/20"
+                >
+                    <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                    </svg>
+                </motion.div>
+                <div>
+                    <h3 className="text-xl font-black text-text-strong tracking-tighter">Performance Chart</h3>
+                    <p className="text-sm text-slate-400 mt-2 max-w-xs">Start trading to see your portfolio performance charted in real-time.</p>
+                </div>
+            </div>
         );
     }
 
     return (
-        <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+        <motion.div
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] shadow-2xl p-6 sm:p-8"
+            transition={{ duration: 0.5 }}
+            className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 rounded-[2.5rem] shadow-2xl overflow-hidden"
         >
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[1.25rem] text-white shadow-lg shadow-blue-500/20">
-                        <ChartBarIcon className="w-6 h-6" />
+            {/* ── Header ── */}
+            <div className="px-8 pt-8 pb-0">
+                <div className="flex flex-wrap items-start justify-between gap-6 mb-6">
+                    <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-2xl shadow-lg ${isUp ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20' : 'bg-gradient-to-br from-rose-500 to-pink-600 shadow-rose-500/20'}`}>
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-text-strong tracking-tighter leading-none">Performance Trend</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.25em] mt-1.5">Portfolio Value Over Time</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-xl font-black text-text-strong tracking-tighter leading-none">Portfolio Alpha</h3>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1.5">Historical Performance Index</p>
+
+                    {/* Range pills */}
+                    <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/70 dark:bg-slate-800/70 border border-slate-200/50 dark:border-slate-700/50">
+                        {RANGES.map(r => (
+                            <button
+                                key={r}
+                                onClick={() => setActiveRange(r)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeRange === r
+                                    ? 'bg-white dark:bg-slate-700 text-text-strong shadow-sm'
+                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                    }`}
+                            >
+                                {r}
+                            </button>
+                        ))}
                     </div>
                 </div>
-                <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Global Standard • 24H</span>
+
+                {/* ── KPI Bar ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    {[
+                        { label: 'Net Worth', value: GHS2(stats.last), color: 'text-text-strong' },
+                        {
+                            label: 'Total Return',
+                            value: `${stats.pnl >= 0 ? '+' : ''}${stats.pnlPct.toFixed(2)}%`,
+                            sub: `${stats.pnl >= 0 ? '+' : ''}${GHS2(stats.pnl)}`,
+                            color: stats.isUp ? 'text-emerald-500' : 'text-rose-500',
+                        },
+                        { label: 'Session High', value: GHS(stats.peak), color: 'text-emerald-500' },
+                        { label: 'Session Low', value: GHS(stats.trough), color: 'text-rose-500' },
+                    ].map(({ label, value, sub, color }) => (
+                        <div key={label} className="px-4 py-3 rounded-2xl bg-white/50 dark:bg-slate-800/40 border border-white/60 dark:border-slate-700/40">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{label}</p>
+                            <p className={`text-base font-black tracking-tighter leading-none ${color}`}>{value}</p>
+                            {sub && <p className={`text-[10px] font-bold mt-1 ${color} opacity-70`}>{sub}</p>}
+                        </div>
+                    ))}
                 </div>
             </div>
-            <div className="relative group/chart">
-                <svg viewBox={`0 0 ${chartConfig.width} ${chartConfig.height}`} className="w-full h-auto drop-shadow-2xl" onMouseMove={handleMouseMove} onMouseLeave={() => setTooltipData(null)}>
+
+            {/* ── SVG Chart ── */}
+            <div className="relative px-0 pb-0">
+                <svg
+                    ref={svgRef}
+                    viewBox={`0 0 ${W} ${H}`}
+                    className="w-full h-auto"
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={() => setTooltip(null)}
+                    style={{ cursor: 'crosshair' }}
+                >
                     <defs>
-                        <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                            <feMerge>
-                                <feMergeNode in="coloredBlur" />
-                                <feMergeNode in="SourceGraphic" />
-                            </feMerge>
-                        </filter>
-                        <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="rgb(var(--primary))" stopOpacity="0.6" />
-                            <stop offset={breakEvenOffset} stopColor="rgb(var(--primary))" stopOpacity="0.1" />
-                            <stop offset={breakEvenOffset} stopColor="rgb(var(--error))" stopOpacity="0.1" />
-                            <stop offset="100%" stopColor="rgb(var(--error))" stopOpacity="0.6" />
+                        {/* Area gradient */}
+                        <linearGradient id="perfAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={gradStartColor} stopOpacity={0.35} />
+                            <stop offset="60%" stopColor={gradStartColor} stopOpacity={0.08} />
+                            <stop offset="100%" stopColor={gradEndColor} stopOpacity={0.01} />
                         </linearGradient>
-                        <mask id="areaMask">
-                            <path d={areaPath} fill="white" />
-                        </mask>
+                        {/* Line glow */}
+                        <filter id="lineGlow" x="-20%" y="-100%" width="140%" height="300%">
+                            <feGaussianBlur stdDeviation="4" result="blur" />
+                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
+                        {/* Dot glow */}
+                        <filter id="dotGlow" x="-100%" y="-100%" width="300%" height="300%">
+                            <feGaussianBlur stdDeviation="5" result="blur" />
+                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
+                        {/* Clip chart area */}
+                        <clipPath id="chartClip">
+                            <rect x={PAD.left} y={PAD.top} width={cW} height={cH} />
+                        </clipPath>
                     </defs>
 
-                    {/* Y-Axis Grid Lines & Labels */}
-                    {yAxisLabels.map((label, i) => (
+                    {/* Y-axis grid + labels */}
+                    {yLines.map(({ v, y }, i) => (
                         <g key={i}>
-                            <line x1={chartConfig.padding.left} y1={label.y} x2={chartConfig.width - chartConfig.padding.right} y2={label.y} stroke="rgb(var(--base-300))" strokeWidth="0.5" strokeDasharray="2 4" />
-                            <text x={chartConfig.padding.left - 12} y={label.y + 4} textAnchor="end" fontSize="10" fill="rgb(var(--base-content))" className="font-mono font-bold opacity-60">
-                                {formatter.format(label.value || 0).replace('GH₵', '').replace('GHS', '').trim()}
+                            <line
+                                x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
+                                stroke="currentColor" className="text-slate-200 dark:text-slate-800"
+                                strokeWidth={i === 0 ? 0.5 : 0.5} strokeDasharray={i === 0 ? '0' : '3 6'}
+                            />
+                            <text x={PAD.left - 10} y={y + 4} textAnchor="end" fontSize="10" className="fill-slate-400 dark:fill-slate-500 font-mono font-bold">
+                                {GHS(v).replace('GH₵', '').replace('GHS', '').trim()}
                             </text>
                         </g>
                     ))}
 
-                    {/* Gradient Fill - animated fading up */}
-                    <rect className="animate-fade-in-up duration-1000" x={chartConfig.padding.left} y={chartConfig.padding.top} width={chartConfig.width - chartConfig.padding.left - chartConfig.padding.right} height={chartConfig.height - chartConfig.padding.top - chartConfig.padding.bottom} fill="url(#pnlGradient)" mask="url(#areaMask)" />
+                    {/* X-axis time labels */}
+                    {xLabels.map(({ x, t }, i) => (
+                        <text key={i} x={x} y={H - 6} textAnchor="middle" fontSize="10" className="fill-slate-400 dark:fill-slate-500 font-mono">
+                            {new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </text>
+                    ))}
 
-                    {/* Starting Capital Line */}
-                    {/* FIX: Used 'startingCapitalY' from useMemo to prevent 'yScale' not defined error. */}
-                    <line x1={chartConfig.padding.left} y1={startingCapitalY} x2={chartConfig.width - chartConfig.padding.right} y2={startingCapitalY} stroke="currentColor" className="text-slate-400 dark:text-slate-500" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
-
-                    {/* Main Value Line - Animated drawing effect */}
-                    <path
-                        d={linePath}
-                        fill="none"
-                        stroke="url(#pnlGradient)"
-                        strokeWidth="3"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        filter="url(#neon-glow)"
-                        className="animate-[dash_2s_ease-out_forwards]"
-                        strokeDasharray="2000"
-                        strokeDashoffset="2000"
-                    />
-                    <style>{`@keyframes dash { to { stroke-dashoffset: 0; } }`}</style>
-
-                    {/* Tooltip Indicator */}
-                    {tooltipData && (
-                        <g className="pointer-events-none transition-all duration-100 ease-out">
-                            <line x1={tooltipData.x} y1={chartConfig.padding.top} x2={tooltipData.x} y2={chartConfig.height - chartConfig.padding.bottom} stroke="currentColor" className="text-indigo-400/50" strokeWidth="2" strokeDasharray="4 4" />
-                            <circle cx={tooltipData.x} cy={tooltipData.y} r="6" fill="white" className="stroke-indigo-500 dark:stroke-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]" strokeWidth="3" />
+                    {/* Break-even dashed line */}
+                    {breakY > PAD.top && breakY < PAD.top + cH && (
+                        <g>
+                            <line
+                                x1={PAD.left} y1={breakY} x2={W - PAD.right} y2={breakY}
+                                stroke="#94a3b8" strokeWidth={1} strokeDasharray="6 5" opacity={0.6}
+                            />
+                            <text x={PAD.left + 6} y={breakY - 5} fontSize="9" className="fill-slate-400 dark:fill-slate-500 font-bold uppercase tracking-widest">
+                                Break-even
+                            </text>
                         </g>
                     )}
+
+                    {/* Gradient area fill (clipped) */}
+                    <g clipPath="url(#chartClip)">
+                        <motion.path
+                            d={areaPath}
+                            fill="url(#perfAreaGrad)"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 1 }}
+                        />
+                    </g>
+
+                    {/* Main trend line — animated draw */}
+                    <g clipPath="url(#chartClip)">
+                        <motion.path
+                            d={linePath}
+                            fill="none"
+                            stroke={lineColor}
+                            strokeWidth={2.5}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            filter="url(#lineGlow)"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 1.4, ease: 'easeOut' }}
+                        />
+                    </g>
+
+                    {/* Crosshair + dot */}
+                    <AnimatePresence>
+                        {tooltip && (
+                            <g className="pointer-events-none">
+                                {/* Vertical line */}
+                                <motion.line
+                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                    x1={tooltip.x} y1={PAD.top} x2={tooltip.x} y2={PAD.top + cH}
+                                    stroke={lineColor} strokeWidth={1.5} strokeDasharray="4 4" opacity={0.7}
+                                />
+                                {/* Horizontal line */}
+                                <motion.line
+                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                    x1={PAD.left} y1={tooltip.y} x2={W - PAD.right} y2={tooltip.y}
+                                    stroke={lineColor} strokeWidth={1} strokeDasharray="4 4" opacity={0.4}
+                                />
+                                {/* Glow dot */}
+                                <motion.circle
+                                    initial={{ r: 0, opacity: 0 }} animate={{ r: 8, opacity: 0.25 }} exit={{ r: 0, opacity: 0 }}
+                                    cx={tooltip.x} cy={tooltip.y} fill={lineColor}
+                                    filter="url(#dotGlow)"
+                                />
+                                {/* Hard dot */}
+                                <motion.circle
+                                    initial={{ r: 0 }} animate={{ r: 5 }} exit={{ r: 0 }}
+                                    cx={tooltip.x} cy={tooltip.y} fill={lineColor}
+                                    stroke="white" strokeWidth={2.5}
+                                />
+                                {/* Price tag on Y axis */}
+                                <rect x={0} y={tooltip.y - 10} width={PAD.left - 4} height={20} rx={6} fill={lineColor} opacity={0.9} />
+                                <text x={PAD.left - 10} y={tooltip.y + 4} textAnchor="end" fontSize="9" fill="white" fontWeight="800">
+                                    {GHS(tooltip.value).replace('GH₵', '').replace('GHS', '').trim()}
+                                </text>
+                            </g>
+                        )}
+                    </AnimatePresence>
                 </svg>
-                {tooltipData && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="absolute p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-white/50 dark:border-slate-700/50 shadow-2xl pointer-events-none transition-all duration-100 ease-out z-50 min-w-[160px]" 
-                        style={{ left: tooltipData.x, top: chartConfig.padding.top / 2, transform: `translateX(${tooltipData.x > chartConfig.width / 2 ? '-110%' : '10%'})` }}
-                    >
-                        <div className="flex flex-col space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(tooltipData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
-                            <p className="font-black text-xl text-text-strong tracking-tighter">GH₵{tooltipData.value.toLocaleString()}</p>
-                            <div className="flex items-center space-x-2">
-                                <span className={`text-xs font-black px-2 py-1 rounded-lg ${tooltipData.pnl >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                    {tooltipData.pnl >= 0 ? '+' : ''}{!isNaN(tooltipData.pnl / startingCapital) ? ((tooltipData.pnl / startingCapital) * 100).toFixed(2) : '0.00'}%
-                                </span>
-                                <span className={`text-[10px] font-bold ${tooltipData.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {tooltipData.pnl >= 0 ? '+' : ''}GH₵{Math.abs(tooltipData.pnl).toLocaleString()}
-                                </span>
+
+                {/* Floating tooltip card */}
+                <AnimatePresence>
+                    {tooltip && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.92, y: 6 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.92 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-4 pointer-events-none z-50"
+                            style={{ left: tooltip.svgX > 0.55 ? undefined : '54%', right: tooltip.svgX > 0.55 ? '4%' : undefined }}
+                        >
+                            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-3xl border border-white/60 dark:border-slate-700/60 rounded-2xl shadow-2xl p-5 min-w-[180px]">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.25em] mb-3">
+                                    {new Date(tooltip.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </p>
+                                <p className="text-2xl font-black text-text-strong tracking-tighter leading-none mb-3">{GHS2(tooltip.value)}</p>
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${tooltip.pnl >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20'}`}>
+                                    <svg className={`w-3 h-3 ${tooltip.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500 rotate-180'}`} fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.03 9.83a.75.75 0 01-1.06-1.06l5.25-5.25a.75.75 0 011.06 0l5.25 5.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className={`text-xs font-black ${tooltip.pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {tooltip.pnl >= 0 ? '+' : ''}{GHS2(tooltip.pnl)} ({tooltip.pnlPct >= 0 ? '+' : ''}{tooltip.pnlPct.toFixed(2)}%)
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    </motion.div>
-                )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </motion.div>
     );

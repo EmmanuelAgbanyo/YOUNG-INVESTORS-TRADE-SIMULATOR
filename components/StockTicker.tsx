@@ -7,7 +7,7 @@ interface StockTickerProps {
   stocks: Stock[];
 }
 
-const StockTicker: React.FC<StockTickerProps> = ({ stocks }) => {
+const StockTicker: React.FC<StockTickerProps> = React.memo(({ stocks }) => {
   const TickerItem: React.FC<{ stock: Stock }> = ({ stock }) => {
     const priceChange = stock.price - (stock.lastPrice ?? stock.price);
     const isPositive = priceChange >= 0;
@@ -56,7 +56,7 @@ const StockTicker: React.FC<StockTickerProps> = ({ stocks }) => {
       <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-base-100 to-transparent pointer-events-none z-30" />
     </div>
   );
-};
+});
 
 const styleId = 'stock-ticker-animation';
 if (!document.getElementById(styleId)) {

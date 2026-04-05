@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { ref, onValue, get, set, update } from 'firebase/database';
 import { database } from '../firebase.ts';
@@ -255,14 +255,16 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
         syncProfileData();
     }, [profileIdToLoad, adminSettings.startingCapital]);
 
-    // Save changes to Firebase and LocalStorage
+    // Debounced Firebase write — instant LocalStorage for UI, throttled DB writes (500ms)
+    const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (profileIdToLoad && profileState && isLoaded) {
-            // Update LocalStorage for immediate feedback/offline
+            // Update LocalStorage immediately for snappy UI
             localStorage.setItem(getProfileStateKey(profileIdToLoad), JSON.stringify(profileState));
-            
-            // Sync to Firebase in the background
-            const saveToFirebase = async () => {
+
+            // Debounce the expensive Firebase write to max once per 500ms
+            if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+            saveDebounceRef.current = setTimeout(async () => {
                 try {
                     await Promise.all([
                         set(ref(database, `portfolios/${profileIdToLoad}`), {
@@ -278,9 +280,11 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
                 } catch (e) {
                     console.error("Failed to persist state to Firebase:", e);
                 }
-            };
-            saveToFirebase();
+            }, 500);
         }
+        return () => {
+            if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+        };
     }, [profileIdToLoad, profileState, isLoaded]);
 
 
@@ -482,6 +486,12 @@ export const useStockMarket = (activeProfile: UserProfile | null) => {
     // Effect 3: Order Processor & Circuit Breaker (Reacts to stock price changes)
     useEffect(() => {
         if (marketStatus !== 'OPEN' || !profileState || stocks.every((s, i) => s.price === STOCKS_DATA[i].price)) return;
+
+        // FAST-EXIT: Skip entirely when there is nothing to process — avoids all the computation below
+        const unsettledArr = Array.isArray(profileState.portfolio.unsettledCash)
+            ? profileState.portfolio.unsettledCash
+            : Object.values(profileState.portfolio.unsettledCash || {});
+        if (!profileState.activeOrders?.length && !unsettledArr.length) return;
 
         // Circuit Breaker Logic
         if (adminSettings.circuitBreakerEnabled && !circuitBreakerTriggered) {

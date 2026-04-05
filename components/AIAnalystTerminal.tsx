@@ -1,9 +1,6 @@
-
-
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Stock, Message } from '../types.ts';
-import Button from './ui/Button.tsx';
 
 interface AnalystSession {
     messages: Message[];
@@ -12,185 +9,374 @@ interface AnalystSession {
 }
 
 interface AIAnalystTerminalProps {
-  stock: Stock;
-  session: AnalystSession;
-  onStartAnalysis: (stock: Stock) => void;
-  onSendMessage: (symbol: string, message: string) => void;
+    stock: Stock;
+    session: AnalystSession;
+    onStartAnalysis: (stock: Stock) => void;
+    onSendMessage: (symbol: string, message: string) => void;
 }
 
-const SparkleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.562L16.25 21.75l-.648-1.188a2.25 2.25 0 01-1.4-1.4l-1.188-.648 1.188-.648a2.25 2.25 0 011.4-1.4l.648-1.188.648 1.188a2.25 2.25 0 011.4 1.4l1.188.648-1.188.648a2.25 2.25 0 01-1.4 1.4z" />
-    </svg>
-);
+// ── Suggested quick-ask chips ─────────────────────────────────────────────
+const SUGGESTED_QUESTIONS = [
+    'Is now a good time to buy?',
+    'What are the risks?',
+    'How does volatility affect me?',
+    'Should I sell if it drops 5%?',
+    'What would make this stock go up?',
+];
 
-const SendIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
-        <path d="M3.105 3.105a1.5 1.5 0 012.122-.219l8.684 4.342a1.5 1.5 0 010 2.54l-8.684 4.342a1.5 1.5 0 01-2.332-1.928l1.79-4.475a.5.5 0 00-.01- .052l-1.79-4.475a1.5 1.5 0 01.21-1.928z" />
-    </svg>
-);
+// ── Markdown-to-JSX renderer ──────────────────────────────────────────────
+const renderMarkdown = (text: string): React.ReactNode[] => {
+    const lines = text.split('\n');
+    const nodes: React.ReactNode[] = [];
+    let i = 0;
+    while (i < lines.length) {
+        const line = lines[i];
+        if (!line.trim()) { nodes.push(<div key={i} className="h-2" />); i++; continue; }
 
-const LoadingSpinner: React.FC = () => (
-    <div className="flex items-center justify-center space-x-2 py-4">
-        <div className="w-4 h-4 rounded-full animate-pulse bg-primary" />
-        <div className="w-4 h-4 rounded-full animate-pulse bg-primary" style={{animationDelay: '0.2s'}} />
-        <div className="w-4 h-4 rounded-full animate-pulse bg-primary" style={{animationDelay: '0.4s'}}/>
-    </div>
-);
-
-const TypingIndicator: React.FC = () => (
-    <div className="flex items-center space-x-2">
-        <div className="w-6 h-6 rounded-full themed-bg-gradient flex items-center justify-center text-white text-xs font-bold shrink-0">AI</div>
-        <div className="flex items-center space-x-1 p-3 bg-base-200 rounded-lg">
-            <div className="w-2 h-2 rounded-full animate-pulse bg-base-content/50" />
-            <div className="w-2 h-2 rounded-full animate-pulse bg-base-content/50" style={{animationDelay: '0.2s'}} />
-            <div className="w-2 h-2 rounded-full animate-pulse bg-base-content/50" style={{animationDelay: '0.4s'}}/>
-        </div>
-    </div>
-);
-
-const AIAnalystTerminal: React.FC<AIAnalystTerminalProps> = ({ stock, session, onStartAnalysis, onSendMessage }) => {
-  const [userInput, setUserInput] = useState('');
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const { messages, isLoading, error } = session;
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [messages, isLoading]);
-
-  const handleStartAnalysis = () => {
-      onStartAnalysis(stock);
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userInput.trim() || isLoading) return;
-    onSendMessage(stock.symbol, userInput);
-    setUserInput('');
-  };
-
-  const renderMessageText = (text: string) => {
-    return text.split('\n').map((line, index) => {
+        // H3
         if (line.startsWith('### ')) {
-            return <h3 key={index} className="text-md font-black text-text-strong mt-4 mb-2 tracking-tight">{line.substring(4)}</h3>;
+            nodes.push(
+                <h3 key={i} className="text-sm font-black text-text-strong mt-5 mb-2 tracking-tight flex items-center gap-2">
+                    {line.slice(4)}
+                </h3>
+            );
+            i++; continue;
         }
-        if (line.startsWith('**')) {
-            const parts = line.split('**');
-            return <p key={index} className="mb-2 leading-relaxed"><strong>{parts[1]}</strong>{parts[2]}</p>
+        // H2
+        if (line.startsWith('## ')) {
+            nodes.push(
+                <h2 key={i} className="text-base font-black text-text-strong mt-5 mb-2 tracking-tighter">{line.slice(3)}</h2>
+            );
+            i++; continue;
         }
-        return <p key={index} className="mb-2 last:mb-0 leading-relaxed font-bold text-slate-600 dark:text-slate-400">{line}</p>;
+
+        // Recommendation line — highlight BUY / HOLD / SELL
+        if (line.includes('✅') || line.includes('⏸') || line.includes('❌')) {
+            const isBuy  = line.includes('✅') || line.toUpperCase().includes('BUY');
+            const isSell = line.includes('❌') || line.toUpperCase().includes('SELL');
+            const color  = isBuy ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                         : isSell ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400'
+                         : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400';
+            nodes.push(
+                <div key={i} className={`mt-4 p-4 rounded-2xl border ${color} font-black text-sm`}>
+                    {renderInline(line)}
+                </div>
+            );
+            i++; continue;
+        }
+
+        // Bullet
+        if (line.startsWith('- ')) {
+            const bullets: React.ReactNode[] = [];
+            while (i < lines.length && lines[i].startsWith('- ')) {
+                bullets.push(
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                        <span>{renderInline(lines[i].slice(2))}</span>
+                    </li>
+                );
+                i++;
+            }
+            nodes.push(<ul key={`ul-${i}`} className="space-y-2 my-2">{bullets}</ul>);
+            continue;
+        }
+
+        // Regular paragraph
+        nodes.push(
+            <p key={i} className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                {renderInline(line)}
+            </p>
+        );
+        i++;
+    }
+    return nodes;
+};
+
+// Inline bold/italic
+const renderInline = (text: string): React.ReactNode => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={i} className="font-black text-text-strong">{part.slice(2, -2)}</strong>;
+        }
+        return part;
     });
-  };
+};
 
-  return (
-    <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800/20 p-8 rounded-[2.5rem] shadow-2xl flex flex-col h-[500px] group/terminal">
-        <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100 dark:border-slate-800/50">
-            <div className="flex items-center space-x-5">
-                <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-xl shadow-blue-500/20">
-                    <SparkleIcon className="w-7 h-7" />
-                </div>
-                <div>
-                    <h3 className="text-2xl font-black text-text-strong tracking-tighter leading-none uppercase">Intelligence Uplink</h3>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mt-3">Node: {stock.symbol} • Neural Link Active</p>
-                </div>
-            </div>
-            {messages.length > 0 && (
-                <button 
-                  onClick={handleStartAnalysis}
-                  className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all"
-                >
-                    Recalibrate
-                </button>
-            )}
-        </div>
-        
-        <div className="flex-grow flex flex-col min-h-0 relative">
-            {messages.length === 0 && !isLoading && !error && (
-                <div className="flex-grow flex flex-col items-center justify-center text-center space-y-6">
-                    <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center border border-slate-100 dark:border-slate-700/50 shadow-inner">
-                        <SparkleIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-                    </div>
-                    <div className="space-y-2">
-                        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Awaiting Command Input</p>
-                        <p className="text-xs font-bold text-slate-400 opacity-60">Initialize deep neural analysis for {stock.name}</p>
-                    </div>
-                    <button 
-                        onClick={handleStartAnalysis} 
-                        disabled={isLoading}
-                        className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.03] active:scale-[0.97] transition-all disabled:opacity-50"
-                    >
-                        {isLoading ? 'Processing' : `Analyze ${stock.symbol} Matrix`}
-                    </button>
-                </div>
-            )}
+// ── Typing dots ────────────────────────────────────────────────────────────
+const TypingDots: React.FC = () => (
+    <div className="flex items-center gap-1.5 px-4 py-3 bg-white/60 dark:bg-slate-800/60 rounded-2xl rounded-tl-none w-fit shadow-sm">
+        {[0, 1, 2].map(i => (
+            <motion.div
+                key={i}
+                className="w-2 h-2 rounded-full bg-blue-400"
+                animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
+            />
+        ))}
+    </div>
+);
 
-            {isLoading && messages.length === 0 && (
-                <div className="flex-grow flex flex-col items-center justify-center space-y-4">
-                    <LoadingSpinner />
-                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] animate-pulse">Syncing Neural Pathways</span>
-                </div>
-            )}
-            
-            {error && (
-                <div className="flex-grow flex flex-col items-center justify-center text-center p-8 bg-rose-50 dark:bg-rose-900/10 rounded-3xl border border-dashed border-rose-200 dark:border-rose-900/30">
-                    <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-2">Uplink Failure</p>
-                    <p className="text-xs font-bold text-rose-500/70">{error}</p>
-                </div>
-            )}
-            
-            {messages.length > 0 && (
-                <div ref={chatContainerRef} className="flex-grow space-y-8 overflow-y-auto pr-3 custom-scrollbar">
-                    {messages.map((msg, index) => (
-                        <div key={index} className={`flex items-start gap-5 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[10px] tracking-tight shrink-0 border border-white/20 dark:border-white/5 ${
-                                msg.role === 'model' 
-                                ? 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg' 
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                            }`}>
-                                {msg.role === 'model' ? 'AI' : 'US'}
+// ── AI badge + user badge ──────────────────────────────────────────────────
+const AIBadge = () => (
+    <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-500/20">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+        </svg>
+    </div>
+);
+
+const YouBadge = () => (
+    <div className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 text-[10px] font-black shrink-0">
+        YOU
+    </div>
+);
+
+// ── Main component ─────────────────────────────────────────────────────────
+const AIAnalystTerminal: React.FC<AIAnalystTerminalProps> = ({
+    stock, session, onStartAnalysis, onSendMessage,
+}) => {
+    const [input, setInput] = useState('');
+    const chatRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const { messages, isLoading, error } = session;
+    const hasMessages = messages.length > 0;
+
+    // Auto-scroll on new message
+    useEffect(() => {
+        if (chatRef.current) {
+            chatRef.current.scrollTop = chatRef.current.scrollHeight;
+        }
+    }, [messages, isLoading]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!input.trim() || isLoading) return;
+        onSendMessage(stock.symbol, input.trim());
+        setInput('');
+    };
+
+    const handleChip = (q: string) => {
+        if (isLoading) return;
+        onSendMessage(stock.symbol, q);
+    };
+
+    // Direction badge
+    const direction = useMemo(() => {
+        const h = stock.priceHistory ?? [];
+        if (h.length < 2) return null;
+        const last5 = h.slice(-5);
+        const up = last5.filter(t => t.close > t.open).length;
+        if (up >= 4) return { label: '▲ Trending Up', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' };
+        if (up <= 1) return { label: '▼ Trending Down', color: 'text-rose-500 bg-rose-50 dark:bg-rose-900/20' };
+        return { label: '◆ Sideways', color: 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' };
+    }, [stock.priceHistory]);
+
+    return (
+        <div className="flex flex-col" style={{ minHeight: '420px', maxHeight: '580px' }}>
+            {/* ── Header ── */}
+            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800/50">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <AIBadge />
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-base font-black text-text-strong tracking-tight leading-none">
+                                    AI Stock Coach
+                                </h3>
+                                <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-[9px] font-black text-blue-500 uppercase tracking-widest border border-blue-100 dark:border-blue-800">
+                                    Gemini
+                                </span>
                             </div>
-                            <div className={`max-w-[85%] p-6 rounded-[2rem] shadow-sm transform transition-all duration-300 ${
-                                msg.role === 'user' 
-                                ? 'bg-slate-50 dark:bg-slate-800/40 text-slate-800 dark:text-white rounded-tr-none' 
-                                : 'bg-white/60 dark:bg-slate-900/60 text-slate-800 dark:text-white border border-white/40 dark:border-slate-800/40 rounded-tl-none'
-                            }`}>
-                                <div className="text-sm leading-relaxed whitespace-pre-wrap">{renderMessageText(msg.text)}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                                <p className="text-[10px] text-slate-400 font-bold">Analysing: <span className="text-text-strong font-black">{stock.name}</span></p>
+                                {direction && (
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${direction.color}`}>
+                                        {direction.label}
+                                    </span>
+                                )}
                             </div>
                         </div>
-                    ))}
-                    {isLoading && (
-                        <div className="flex items-center gap-5">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-lg animate-pulse">AI</div>
-                            <TypingIndicator />
-                        </div>
+                    </div>
+
+                    {hasMessages && (
+                        <motion.button
+                            whileHover={{ scale: 1.04 }}
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => onStartAnalysis(stock)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all"
+                        >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Fresh Analysis
+                        </motion.button>
                     )}
                 </div>
+            </div>
+
+            {/* ── Chat body ── */}
+            <div ref={chatRef} className="flex-grow overflow-y-auto px-6 py-4 custom-scrollbar space-y-5">
+                {/* Empty state */}
+                {!hasMessages && !isLoading && !error && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col items-center justify-center h-full text-center space-y-5 py-8"
+                    >
+                        <motion.div
+                            animate={{ scale: [1, 1.07, 1] }}
+                            transition={{ repeat: Infinity, duration: 2.5 }}
+                            className="w-16 h-16 rounded-3xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center border border-blue-500/20 shadow-inner"
+                        >
+                            <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                            </svg>
+                        </motion.div>
+                        <div>
+                            <p className="text-sm font-black text-text-strong">Get an AI view on {stock.name}</p>
+                            <p className="text-xs text-slate-400 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                                Our AI coach will look at the live price data and tell you what it thinks in plain English.
+                            </p>
+                        </div>
+                        <motion.button
+                            whileHover={{ scale: 1.04, y: -2 }}
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => onStartAnalysis(stock)}
+                            disabled={isLoading}
+                            className="flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-[0.15em] shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all disabled:opacity-50"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                            </svg>
+                            Analyse {stock.symbol} Now
+                        </motion.button>
+                    </motion.div>
+                )}
+
+                {/* Loading first analysis */}
+                {isLoading && !hasMessages && (
+                    <div className="flex flex-col items-center justify-center h-full space-y-4 py-8">
+                        <div className="flex items-center gap-4">
+                            <AIBadge />
+                            <TypingDots />
+                        </div>
+                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] animate-pulse">
+                            Reading the market data...
+                        </p>
+                    </div>
+                )}
+
+                {/* Error */}
+                {error && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex flex-col items-center justify-center h-full text-center p-8 bg-rose-50 dark:bg-rose-900/10 rounded-3xl border border-dashed border-rose-200 dark:border-rose-900/30 space-y-3"
+                    >
+                        <div className="p-3 bg-rose-100 dark:bg-rose-900/20 rounded-2xl">
+                            <svg className="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <p className="text-sm font-black text-rose-600">Something went wrong</p>
+                        <p className="text-xs text-rose-500/70">{error}</p>
+                        <button
+                            onClick={() => onStartAnalysis(stock)}
+                            className="mt-2 px-5 py-2 rounded-xl bg-rose-500 text-white text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-all"
+                        >
+                            Try Again
+                        </button>
+                    </motion.div>
+                )}
+
+                {/* Messages */}
+                <AnimatePresence>
+                    {messages.map((msg, idx) => (
+                        <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                        >
+                            {msg.role === 'model' ? <AIBadge /> : <YouBadge />}
+                            <div className={`max-w-[88%] px-5 py-4 rounded-[1.5rem] shadow-sm ${
+                                msg.role === 'user'
+                                    ? 'bg-blue-600 text-white rounded-tr-none'
+                                    : 'bg-white/70 dark:bg-slate-800/60 border border-white/50 dark:border-slate-700/50 rounded-tl-none'
+                            }`}>
+                                {msg.role === 'user'
+                                    ? <p className="text-sm font-bold text-white leading-relaxed">{msg.text}</p>
+                                    : <div className="text-sm leading-relaxed">{renderMarkdown(msg.text)}</div>
+                                }
+                            </div>
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
+
+                {/* Typing while in conversation */}
+                {isLoading && hasMessages && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex items-start gap-3"
+                    >
+                        <AIBadge />
+                        <TypingDots />
+                    </motion.div>
+                )}
+            </div>
+
+            {/* ── Quick-ask chips — only show after first analysis ── */}
+            {hasMessages && !isLoading && !error && (
+                <div className="px-6 py-3 border-t border-slate-100/50 dark:border-slate-800/30">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Quick questions</p>
+                    <div className="flex flex-wrap gap-2">
+                        {SUGGESTED_QUESTIONS.map(q => (
+                            <motion.button
+                                key={q}
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => handleChip(q)}
+                                className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:border-blue-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                            >
+                                {q}
+                            </motion.button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Input bar — only after first analysis ── */}
+            {hasMessages && !error && (
+                <div className="px-6 pb-6 pt-2">
+                    <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            placeholder="Ask anything about this stock..."
+                            disabled={isLoading}
+                            className="flex-grow bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10 rounded-2xl px-5 py-3.5 text-sm font-medium text-text-strong transition-all outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 shadow-inner"
+                        />
+                        <motion.button
+                            whileHover={{ scale: 1.06 }}
+                            whileTap={{ scale: 0.94 }}
+                            type="submit"
+                            disabled={isLoading || !input.trim()}
+                            className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                            </svg>
+                        </motion.button>
+                    </form>
+                </div>
             )}
         </div>
-
-        {messages.length > 0 && !error && (
-            <form onSubmit={handleSendMessage} className="mt-8 flex items-center space-x-3 pt-6 border-t border-slate-100 dark:border-slate-800/50">
-                <input
-                    type="text"
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    placeholder="Provide follow-up instruction..."
-                    className="w-full bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl px-6 py-4 text-sm font-black text-text-strong transition-all outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 shadow-inner"
-                    disabled={isLoading}
-                />
-                <button 
-                  type="submit" 
-                  className="p-4 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition-all active:scale-[0.95] disabled:opacity-50"
-                  disabled={isLoading || !userInput.trim()}
-                >
-                    <SendIcon className="w-6 h-6" />
-                </button>
-            </form>
-        )}
-    </div>
-  );
+    );
 };
 
 export default AIAnalystTerminal;

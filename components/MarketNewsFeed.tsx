@@ -26,7 +26,7 @@ const LoadingSpinner: React.FC = () => (
     </div>
 );
 
-const MarketNewsFeed: React.FC<MarketNewsFeedProps> = ({ news, isLoading, onRefresh }) => {
+const MarketNewsFeed: React.FC<MarketNewsFeedProps> = React.memo(({ news, isLoading, onRefresh }) => {
     const error = !isLoading && news.length === 0 ? 'INTELLIGENCE_LINK_OFFLINE' : null;
     const [lastRefreshed, setLastRefreshed] = useState<string>('');
 
@@ -132,6 +132,6 @@ const MarketNewsFeed: React.FC<MarketNewsFeedProps> = ({ news, isLoading, onRefr
             </div>
         </div>
     );
-};
+});
 
 export default MarketNewsFeed;

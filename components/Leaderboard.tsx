@@ -7,6 +7,7 @@ interface LeaderboardProps {
     stocks: Stock[];
     currentUserProfile?: UserProfile | null;
     isAdmin?: boolean;
+    isVisible?: boolean;
 }
 
 interface TraderStats {
@@ -22,7 +23,7 @@ interface TraderStats {
 
 const STARTING_CAPITAL = 100000;
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, isAdmin }) => {
+const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, isAdmin, isVisible = true }) => {
     const [traderStats, setTraderStats] = useState<TraderStats[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -34,8 +35,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
     const [history, setHistory] = useState<any>({});
     const [orders, setOrders] = useState<any>({});
 
-    // 1. Subscribe to all data nodes on mount
+    // 1. Subscribe to all data nodes — only when the leaderboard is visible on screen
     useEffect(() => {
+        if (!isVisible) return; // Don't open subscriptions when component is hidden
+
         setIsLoading(true);
         const unsubProfiles = apiClient.subscribeProfiles((data) => { setProfiles(data); setIsLoading(false); });
         const unsubPortfolios = apiClient.subscribePortfolios(setPortfolios);
@@ -50,7 +53,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ stocks, currentUserProfile, i
             unsubHistory();
             unsubOrders();
         };
-    }, []);
+    }, [isVisible]);
 
     // 2. Recompute rankings whenever any source data OR stocks change
     useEffect(() => {
