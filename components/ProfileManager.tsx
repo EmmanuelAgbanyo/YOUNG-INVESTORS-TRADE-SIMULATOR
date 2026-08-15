@@ -67,7 +67,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                     name: selectedProfile.name, 
                     email: toEmail(loginEmail),
                     createdAt: Date.now(), 
-                    password: loginPassword 
+                    password: hashPassword(loginPassword)
                 };
                 
                 const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
@@ -83,7 +83,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ onProfileSelected, them
                     name: newProfileData.name, 
                     email: toEmail(loginEmail),
                     createdAt: Date.now(), 
-                    password: loginPassword 
+                    password: hashPassword(loginPassword)
                 };
                 
                 const existingProfiles = JSON.parse(localStorage.getItem('yin_trade_profiles') || '[]');
