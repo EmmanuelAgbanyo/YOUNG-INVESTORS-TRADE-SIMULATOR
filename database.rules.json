@@ -20,12 +20,14 @@
       }
     },
     "portfolios": {
+      ".read": "auth != null",
       "$profileId": {
         ".read": "auth != null",
         ".write": "auth != null"
       }
     },
     "holdings": {
+      ".read": "auth != null",
       "$profileId": {
         ".read": "auth != null",
         ".write": "auth != null"
@@ -38,6 +40,7 @@
       }
     },
     "history": {
+      ".read": "auth != null",
       "$profileId": {
         ".read": "auth != null",
         ".write": "auth != null"
