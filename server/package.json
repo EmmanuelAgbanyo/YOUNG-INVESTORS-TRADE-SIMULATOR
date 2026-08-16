@@ -5,7 +5,8 @@
     "dev": "node --watch server.js",
     "start": "node server.js",
     "migrate": "node migrations.js",
-    "test": "node test.js"
+    "test": "node test.js",
+    "provision:superadmin": "node provision-superadmin.js"
   },
   "dependencies": {
     "axios": "^1.7.2",

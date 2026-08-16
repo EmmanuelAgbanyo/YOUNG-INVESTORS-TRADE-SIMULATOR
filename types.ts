@@ -41,6 +41,35 @@ export interface ToastMessage {
   text: string;
 }
 
+export type AccountStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING';
+export type AuthRole = 'SUPER_ADMIN' | 'SUPERVISOR' | 'SUPPORT' | 'ANALYST';
+export type StaffRole = AuthRole | 'ADMIN';
+export type Permission =
+  | 'overview.read'
+  | 'users.read'
+  | 'users.manage'
+  | 'portfolios.read'
+  | 'market.manage'
+  | 'competitions.manage'
+  | 'support.read'
+  | 'support.reply'
+  | 'staff.read'
+  | 'staff.manage'
+  | 'settings.manage'
+  | 'audit.read';
+
+export interface AuthClaims {
+  role: AuthRole;
+  permissions: Permission[];
+  claimsVersion?: number;
+}
+export type StaffStatus = 'INVITED' | 'ACTIVE' | 'SUSPENDED';
+export type SupportTicketStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING_FOR_USER' | 'RESOLVED' | 'CLOSED';
+export type SupportTicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type CompetitionStatus = 'DRAFT' | 'INVITE_ONLY' | 'OPEN' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+export type CompetitionVisibility = 'PRIVATE' | 'PUBLIC';
+export type CompetitionScoring = 'TOTAL_RETURN' | 'NET_WORTH';
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -50,6 +79,7 @@ export interface UserProfile {
   teamId?: string;
   isTeamLeader?: boolean;
   isDisqualified?: boolean;
+  accountStatus?: AccountStatus;
 }
 
 export interface Team {
@@ -63,6 +93,70 @@ export interface TeamInvite {
   code: string;
   teamId: string;
   createdAt: number;
+}
+
+export interface SupportMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'USER' | 'STAFF' | 'ADMIN';
+  text: string;
+  createdAt: number;
+}
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  subject: string;
+  category: 'ACCOUNT' | 'TRADING' | 'PORTFOLIO' | 'TECHNICAL' | 'OTHER';
+  priority: SupportTicketPriority;
+  status: SupportTicketStatus;
+  assignedTo?: string;
+  assignedName?: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: SupportMessage[];
+}
+
+export interface StaffMember {
+  id: string;
+  email: string;
+  name: string;
+  role: StaffRole;
+  status: StaffStatus;
+  permissions: string[];
+  invitedAt: number;
+  lastActiveAt?: number;
+}
+
+export interface Competition {
+  id: string;
+  name: string;
+  description: string;
+  status: CompetitionStatus;
+  visibility: CompetitionVisibility;
+  scoring: CompetitionScoring;
+  startAt: number;
+  endAt: number;
+  entryCapital: number;
+  maxParticipants: number;
+  inviteCode: string;
+  createdBy: string;
+  createdAt: number;
+  participantIds: string[];
+}
+
+export interface CompetitionInvite {
+  id: string;
+  competitionId: string;
+  inviteCode: string;
+  email?: string;
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+  createdAt: number;
+  acceptedBy?: string;
+  acceptedAt?: number;
 }
 
 export interface Holding {

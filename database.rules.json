@@ -48,11 +48,15 @@
     },
     "market_status": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR')"
+    },
+    "market_control_mode": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR')"
     },
     "admin_settings": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR' || auth.token.role === 'ANALYST')",
+      ".write": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com')"
     },
     "teams": {
       ".read": "auth != null",
@@ -65,6 +69,36 @@
     "team_invites": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "competitions": {
+      ".read": "auth != null",
+      "$competitionId": {
+        ".write": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR')"
+      }
+    },
+    "competition_invites": {
+      ".read": "auth != null",
+      "$inviteId": {
+        ".write": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR')"
+      }
+    },
+    "support_tickets": {
+      ".read": "auth != null",
+      "$ticketId": {
+        ".write": "auth != null && (data.child('userId').val() === auth.uid || newData.child('userId').val() === auth.uid || auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR' || auth.token.role === 'SUPPORT')"
+      }
+    },
+    "staff": {
+      ".read": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR' || auth.token.role === 'ANALYST')",
+      "$staffId": {
+        ".write": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com')"
+      }
+    },
+    "admin_audit": {
+      ".read": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR' || auth.token.role === 'ANALYST')",
+      "$eventId": {
+        ".write": "auth != null && (auth.token.role === 'SUPER_ADMIN' || auth.token.email === 'admin@yin.com' || auth.token.role === 'SUPERVISOR')"
+      }
     }
   }
 }

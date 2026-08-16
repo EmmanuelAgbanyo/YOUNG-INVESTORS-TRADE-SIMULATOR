@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -19,3 +19,15 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase services
 export const auth = getAuth(app);
 export const database = getDatabase(app);
+
+// Opt-in local emulator mode. Production continues using the configured Firebase services.
+if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+  const emulatorHost = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || '127.0.0.1';
+  const authPort = Number(import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_PORT || 9099);
+  const databasePort = Number(import.meta.env.VITE_FIREBASE_DATABASE_EMULATOR_PORT || 9000);
+  const authEmulatorUrl = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL || `http://${emulatorHost}:${authPort}`;
+  const databaseEmulatorHost = import.meta.env.VITE_FIREBASE_DATABASE_EMULATOR_HOST || emulatorHost;
+  const databaseEmulatorPort = Number(import.meta.env.VITE_FIREBASE_DATABASE_EMULATOR_PROXY_PORT || databasePort);
+  connectAuthEmulator(auth, authEmulatorUrl, { disableWarnings: true });
+  connectDatabaseEmulator(database, databaseEmulatorHost, databaseEmulatorPort);
+}

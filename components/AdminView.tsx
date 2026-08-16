@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import type { UserProfile, ProfileState, Stock, Team, AdminSettings, ToastMessage, Module, MarketStatus } from '../types.ts';
+import type { AuthRole, Permission, UserProfile, ProfileState, Stock, Team, AdminSettings, ToastMessage, Module, MarketStatus } from '../types.ts';
 import Card from './ui/Card.tsx';
 import { 
     DEFAULT_STARTING_CAPITAL, DEFAULT_ANNUAL_DRIFT, DEFAULT_ANNUAL_VOLATILITY, 
@@ -16,9 +16,13 @@ import Button from './ui/Button.tsx';
 import ConfirmationModal from './ConfirmationModal.tsx';
 import Leaderboard from './Leaderboard.tsx';
 import { apiClient } from '../hooks/useAPI.ts';
+import AdminOperationsView from './AdminOperationsView.tsx';
 
 interface AdminViewProps {
     stocks: Stock[];
+    isAdmin: boolean;
+    authRole: AuthRole | null;
+    permissions: Permission[];
     setToast: (toast: ToastMessage | null) => void;
     marketStatus: MarketStatus;
     marketControlMode: 'AUTO' | 'MANUAL';
@@ -250,7 +254,13 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; 
     <Card><div className="flex items-center space-x-4"><div className="p-3 bg-base-300 rounded-lg">{icon}</div><div><div className="text-sm text-base-content/70">{label}</div><div className="text-2xl font-bold text-text-strong">{value}</div></div></div></Card>
 );
 
-const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, marketControlMode, onUpdateMarketControlMode, openMarketAdmin, closeMarketAdmin, adminSettings }) => {
+const AdminView: React.FC<AdminViewProps> = ({ stocks, isAdmin, authRole, permissions, setToast, marketStatus, marketControlMode, onUpdateMarketControlMode, openMarketAdmin, closeMarketAdmin, adminSettings }) => {
+    const adminProfile = { id: 'admin-console', name: authRole === 'SUPER_ADMIN' ? 'Superadmin' : 'Admin', email: 'admin@yin.com', createdAt: Date.now() };
+    const canManageStaff = permissions.includes('staff.manage');
+    const canManageMarket = permissions.includes('market.manage');
+    const canManageSettings = permissions.includes('settings.manage');
+    const canManageCompetitions = permissions.includes('competitions.manage');
+    const canManageSupport = permissions.includes('support.reply');
     const [allProfilesData, setAllProfilesData] = useState<ProfileSummaryData[]>([]);
     const [isSyncing, setIsSyncing] = useState(false);
 
@@ -280,7 +290,7 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, m
     const [resetProgress, setResetProgress] = useState(0);
     const [resetTask, setResetTask] = useState('');
     const [isNuking, setIsNuking] = useState(false);
-    const [activeTab, setActiveTab] = useState<'Dashboard' |'Traders' | 'Teams' | 'Settings' | 'Academy'>('Dashboard');
+    const [activeTab, setActiveTab] = useState<'Operations' | 'Dashboard' |'Traders' | 'Teams' | 'Settings' | 'Academy'>('Operations');
     const [broadcastMessage, setBroadcastMessage] = useState('');
     const [manualEvent, setManualEvent] = useState('');
     const [isManageUserModalOpen, setIsManageUserModalOpen] = useState(false);
@@ -690,9 +700,9 @@ const AdminView: React.FC<AdminViewProps> = ({ stocks, setToast, marketStatus, m
     }
 
     const renderContent = () => {
-        switch(activeTab) { case 'Dashboard': return renderDashboard(); case 'Traders': return renderTradersView(); case 'Teams': return renderTeamsView(); case 'Academy': return renderAcademyManagementView(); case 'Settings': return renderSettingsView(); default: return null; }
+        switch(activeTab) { case 'Operations': return <AdminOperationsView profile={adminProfile} stocks={stocks} marketStatus={marketStatus} marketControlMode={marketControlMode} openMarketAdmin={openMarketAdmin} closeMarketAdmin={closeMarketAdmin} onUpdateMarketControlMode={onUpdateMarketControlMode} setToast={setToast} authRole={authRole} permissions={permissions} canManageStaff={canManageStaff} canManageMarket={canManageMarket} canManageCompetitions={canManageCompetitions} canManageSupport={canManageSupport} />; case 'Dashboard': return renderDashboard(); case 'Traders': return renderTradersView(); case 'Teams': return renderTeamsView(); case 'Academy': return renderAcademyManagementView(); case 'Settings': return renderSettingsView(); default: return null; }
     }
-    const tabs: ('Dashboard' |'Traders' | 'Teams' | 'Academy' | 'Settings')[] = ['Dashboard', 'Traders', 'Teams', 'Academy', 'Settings'];
+    const tabs: ('Operations' | 'Dashboard' |'Traders' | 'Teams' | 'Academy' | 'Settings')[] = ['Operations', 'Dashboard', 'Traders', 'Teams', 'Academy', 'Settings'];
     return (<div className="space-y-6"><h2 className="text-3xl font-bold text-text-strong">Admin Control Center</h2><div className="flex items-center border-b border-base-300 overflow-x-auto">
         {tabs.map(tab => (<button key={tab} onClick={() => setActiveTab(tab)} className={`py-2 px-4 font-semibold text-sm transition-colors duration-200 border-b-2 shrink-0 ${activeTab === tab ? 'text-primary border-primary' : 'text-base-content/70 border-transparent hover:text-text-strong'}`}>{tab}</button>))}
         </div>

@@ -9,7 +9,7 @@ import Toast from './components/ui/Toast.tsx';
 import OnboardingModal from './components/OnboardingModal.tsx';
 import GuideModal from './components/GuideModal.tsx';
 import StockTicker from './components/StockTicker.tsx';
-import type { UserProfile, ToastMessage, Team, TeamInvite } from './types.ts';
+import type { AuthClaims, Permission, UserProfile, ToastMessage, Team, TeamInvite } from './types.ts';
 import ProfileManager from './components/ProfileManager.tsx';
 import SetPasswordModal from './components/SetPasswordModal.tsx';
 import CreateTeamModal from './components/CreateTeamModal.tsx';
@@ -32,6 +32,7 @@ const App: React.FC = () => {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteInfo, setInviteInfo] = useState<{ teamName: string; code: string } | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [authClaims, setAuthClaims] = useState<AuthClaims | null>(null);
 
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(() => {
     try {
@@ -66,6 +67,21 @@ const App: React.FC = () => {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!activeProfile) {
+      setAuthClaims(null);
+      return () => { mounted = false; };
+    }
+    apiClient.getAuthClaims(true).then(claims => {
+      if (mounted) setAuthClaims(claims);
+    }).catch(error => {
+      console.warn('Could not load Firebase role claims:', error);
+      if (mounted) setAuthClaims(null);
+    });
+    return () => { mounted = false; };
+  }, [activeProfile?.id]);
 
   useEffect(() => {
     if (stockMarket.toast) {
@@ -212,7 +228,14 @@ const App: React.FC = () => {
     return <SplashScreen />;
   }
 
-  const isAdmin = activeProfile.name === 'Admin' || activeProfile.email === 'admin@yin.com';
+  const legacySuperadminFallback = activeProfile.email?.toLowerCase() === 'admin@yin.com';
+  const effectiveRole = authClaims?.role || (legacySuperadminFallback ? 'SUPER_ADMIN' : null);
+  const effectivePermissions: Permission[] = authClaims?.permissions || (legacySuperadminFallback ? [
+    'overview.read', 'users.read', 'users.manage', 'portfolios.read', 'market.manage',
+    'competitions.manage', 'support.read', 'support.reply', 'staff.read', 'staff.manage',
+    'settings.manage', 'audit.read'
+  ] : []);
+  const isAdmin = effectiveRole !== null;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-base-content font-sans flex flex-col animate-fade-in relative overflow-hidden">
@@ -256,7 +279,9 @@ const App: React.FC = () => {
             marketStatus={stockMarket.marketStatus}
             activeMarketEvent={stockMarket.activeMarketEvent}
             isAdmin={isAdmin}
-            setToast={setToast}
+            authRole={effectiveRole}
+            permissions={effectivePermissions}
+             setToast={setToast}
             adminSettings={stockMarket.adminSettings}
             marketControlMode={stockMarket.marketControlMode}
             onUpdateMarketControlMode={(mode) => apiClient.updateMarketControlMode(mode)}

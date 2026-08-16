@@ -1,8 +1,10 @@
 import { auth, database } from '../firebase';
+import type { AccountStatus, AuthClaims, Competition, CompetitionInvite, CompetitionStatus, Permission, StaffMember, StaffRole, SupportMessage, SupportTicket, SupportTicketPriority, SupportTicketStatus } from '../types';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut,
+  getIdTokenResult,
   updateProfile,
   signInWithPopup,
   GoogleAuthProvider
@@ -114,6 +116,12 @@ class APIClient {
   async login(email: string, password: string) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const profiles = await this.getProfiles(userCredential.user.uid);
+      const isSuspended = profiles.some((profile: any) => profile.accountStatus === 'SUSPENDED');
+      if (isSuspended) {
+        await signOut(auth);
+        throw new Error('This account is suspended. Please contact support.');
+      }
       return { token: userCredential.user.accessToken, userId: userCredential.user.uid };
     } catch (err: any) {
       console.error("Login Error:", err);
@@ -133,6 +141,17 @@ class APIClient {
 
   async logout() {
       return signOut(auth);
+  }
+
+  async getAuthClaims(forceRefresh = false): Promise<AuthClaims | null> {
+    if (!auth.currentUser) return null;
+    const tokenResult = await getIdTokenResult(auth.currentUser, forceRefresh);
+    const role = tokenResult.claims.role as AuthClaims['role'] | undefined;
+    const permissions = Array.isArray(tokenResult.claims.permissions)
+      ? tokenResult.claims.permissions.filter((value): value is Permission => typeof value === 'string')
+      : [];
+    if (!role) return null;
+    return { role, permissions, claimsVersion: typeof tokenResult.claims.claimsVersion === 'number' ? tokenResult.claims.claimsVersion : undefined };
   }
 
   // Profile endpoints
@@ -187,6 +206,17 @@ class APIClient {
     return onValue(ordersRef, (snapshot) => {
       callback(snapshot.val() || {});
     });
+  }
+
+  async updateAccountStatus(id: string, accountStatus: AccountStatus) {
+    try {
+      await update(ref(database, `profiles/${id}`), { accountStatus });
+      await this.writeAudit('ACCOUNT_STATUS_CHANGED', id, { accountStatus });
+      return true;
+    } catch (err) {
+      console.error('Update account status failed:', err);
+      return false;
+    }
   }
 
   async updateProfileStatus(id: string, isDisqualified: boolean) {
@@ -486,6 +516,122 @@ class APIClient {
       return Object.keys(data).map(key => ({ id: key, ...data[key] })).sort((a,b) => b.created_at - a.created_at);
     }
     return [];
+  }
+
+  // Competition operations
+  async getAllCompetitions(): Promise<Competition[]> {
+    try {
+      const snapshot = await get(ref(database, 'competitions'));
+      const data = snapshot.val() || {};
+      return Object.keys(data).map(id => ({ id, ...data[id] }));
+    } catch (error) {
+      console.warn('Competitions unavailable:', error);
+      return [];
+    }
+  }
+
+  async createCompetition(input: Omit<Competition, 'id' | 'inviteCode' | 'createdAt' | 'participantIds' | 'createdBy'>, createdBy: string) {
+    const competitionRef = push(ref(database, 'competitions'));
+    const id = competitionRef.key as string;
+    const inviteCode = `${input.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase() || 'YIN'}${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    const competition: Competition = { ...input, id, inviteCode, createdBy, createdAt: Date.now(), participantIds: [] };
+    await set(competitionRef, competition);
+    await this.writeAudit('COMPETITION_CREATED', id, { name: input.name, status: input.status });
+    return competition;
+  }
+
+  async updateCompetitionStatus(id: string, status: CompetitionStatus) {
+    await update(ref(database, `competitions/${id}`), { status, updatedAt: Date.now() });
+    await this.writeAudit('COMPETITION_STATUS_CHANGED', id, { status });
+    return true;
+  }
+
+  async createCompetitionInvite(competitionId: string, email?: string): Promise<CompetitionInvite> {
+    const competitionSnap = await get(ref(database, `competitions/${competitionId}`));
+    if (!competitionSnap.exists()) throw new Error('Competition not found');
+    const competition = competitionSnap.val() as Competition;
+    const inviteRef = push(ref(database, `competition_invites/${competitionId}`));
+    const invite: CompetitionInvite = { id: inviteRef.key as string, competitionId, inviteCode: competition.inviteCode, email: email?.trim() || undefined, status: 'PENDING', createdAt: Date.now() };
+    await set(inviteRef, invite);
+    return invite;
+  }
+
+  async acceptCompetitionInvite(profileId: string, inviteCode: string) {
+    const competitionsSnap = await get(ref(database, 'competitions'));
+    const competitions = competitionsSnap.val() || {};
+    const match = Object.values(competitions).find((item: any) => item.inviteCode === inviteCode && ['INVITE_ONLY', 'OPEN'].includes(item.status)) as any;
+    if (!match) throw new Error('Invalid or inactive competition invite');
+    if ((match.participantIds || []).includes(profileId)) return match;
+    if ((match.participantIds || []).length >= Number(match.maxParticipants || 0)) throw new Error('This competition is full');
+    const id = Object.keys(competitions).find(key => competitions[key].inviteCode === inviteCode) as string;
+    await update(ref(database, `competitions/${id}`), { participantIds: [...(match.participantIds || []), profileId], status: match.status === 'INVITE_ONLY' ? 'OPEN' : match.status });
+    return { ...match, id, participantIds: [...(match.participantIds || []), profileId] };
+  }
+
+  // Support operations
+  async getAllSupportTickets(): Promise<SupportTicket[]> {
+    try {
+      const snapshot = await get(ref(database, 'support_tickets'));
+      const data = snapshot.val() || {};
+      return Object.keys(data).map(id => ({ ...data[id], id, messages: Object.values(data[id].messages || {}) as SupportMessage[] })).sort((a, b) => b.updatedAt - a.updatedAt);
+    } catch (error) {
+      console.warn('Support tickets unavailable:', error);
+      return [];
+    }
+  }
+
+  async createSupportTicket(input: Omit<SupportTicket, 'id' | 'createdAt' | 'updatedAt' | 'messages'>, firstMessage: string) {
+    const ticketRef = push(ref(database, 'support_tickets'));
+    const id = ticketRef.key as string;
+    const messageRef = push(ref(database, `support_tickets/${id}/messages`));
+    const ticket: any = { ...input, id, createdAt: Date.now(), updatedAt: Date.now(), messages: { [messageRef.key as string]: { id: messageRef.key, senderId: input.userId, senderName: input.userName, senderRole: 'USER', text: firstMessage, createdAt: Date.now() } } };
+    await set(ticketRef, ticket);
+    return ticket as SupportTicket;
+  }
+
+  async addSupportTicketMessage(ticketId: string, message: Omit<SupportMessage, 'id' | 'createdAt'>) {
+    const messageRef = push(ref(database, `support_tickets/${ticketId}/messages`));
+    const payload = { ...message, id: messageRef.key, createdAt: Date.now() };
+    await set(messageRef, payload);
+    await update(ref(database, `support_tickets/${ticketId}`), { updatedAt: Date.now(), status: message.senderRole === 'USER' ? 'OPEN' : 'WAITING_FOR_USER' });
+    return payload as SupportMessage;
+  }
+
+  async updateSupportTicket(ticketId: string, patch: Partial<Pick<SupportTicket, 'status' | 'priority' | 'assignedTo' | 'assignedName'>>) {
+    await update(ref(database, `support_tickets/${ticketId}`), { ...patch, updatedAt: Date.now() });
+    return true;
+  }
+
+  // Staff and admin provisioning records. Actual Firebase Auth creation should be completed by a trusted server or Cloud Function.
+  async getStaffMembers(): Promise<StaffMember[]> {
+    try {
+      const snapshot = await get(ref(database, 'staff'));
+      const data = snapshot.val() || {};
+      return Object.keys(data).map(id => ({ id, ...data[id] }));
+    } catch (error) {
+      console.warn('Staff records unavailable:', error);
+      return [];
+    }
+  }
+
+  async createStaffMember(input: Omit<StaffMember, 'id' | 'invitedAt' | 'status'>) {
+    const staffRef = push(ref(database, 'staff'));
+    const staff: StaffMember = { ...input, id: staffRef.key as string, status: 'INVITED', invitedAt: Date.now() };
+    await set(staffRef, staff);
+    await this.writeAudit('STAFF_INVITED', staff.id, { email: staff.email, role: staff.role });
+    return staff;
+  }
+
+  async updateStaffMember(id: string, patch: Partial<Pick<StaffMember, 'name' | 'role' | 'status' | 'permissions'>>) {
+    await update(ref(database, `staff/${id}`), patch);
+    await this.writeAudit('STAFF_UPDATED', id, patch);
+    return true;
+  }
+
+  async writeAudit(action: string, targetId: string, metadata: Record<string, unknown> = {}) {
+    const actor = auth.currentUser;
+    const auditRef = push(ref(database, 'admin_audit'));
+    await set(auditRef, { id: auditRef.key, action, targetId, metadata, actorId: actor?.uid || 'unknown', actorEmail: actor?.email || '', createdAt: Date.now() });
   }
 
   // Teams endpoints
